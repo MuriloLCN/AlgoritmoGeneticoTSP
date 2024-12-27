@@ -1,5 +1,36 @@
 import os
 import shutil
+import matplotlib.pyplot as plt
+
+def gerar_graficos(instancia: str) -> None:
+
+    labels = []
+    listas_x = []
+    listas_y = []
+
+    for timestamp in timestamps_gerados:
+        if (timestamp.replace(".txt", "")).endswith(instancia):
+            with open(timestamp) as valores:
+                lx = []
+                ly = []
+                for linha in valores:
+                    x, y = map(float, linha.split())
+                    lx.append(x)
+                    ly.append(y)
+            listas_x.append(lx)
+            listas_y.append(ly)
+            labels.append(timestamp.replace(".txt", ""))
+
+    for i in range(len(listas_x)):
+        plt.plot(listas_x[i], listas_y[i], label=labels[i])
+
+    plt.xlabel("Tempo (segundos)")
+    plt.ylabel("Custo")
+    plt.grid(True)
+
+    plt.legend()
+
+    plt.savefig(f"graficos/{instancia}.png")
 
 representacoes_cromossomos = ["per"]
 
@@ -51,18 +82,9 @@ if __name__ == "__main__":
 
                                     # Renomear o timestamp gerado para o arquivo com o nome específico
 
-                                    # Guardar o nome no timestamps_gerados
+                                    # Guardar o nome no timestamps_gerados (blablabla;instancia.txt)
 
-    # Para cada instancia
+    for instancia in arquivos_de_teste:
+        instancia = instancia.replace(".tsp", "")
 
-    #   Buscar todos os timestamps que fazem jús àquela instância
-
-    #   Gerar um gráfico com todos os timestamps daquela instância
-
-    #   Salvar o gráfico com o nome da instância
-
-    #   Gerar uma tabela com todos os timestamps daquela instância
-
-    #   Calcular automaticamente o GAP%
-
-    #   Salvar a tabela em formato LaTeX já
+        gerar_graficos(instancia, timestamps_gerados)
