@@ -32,6 +32,66 @@ def gerar_graficos(instancia: str) -> None:
 
     plt.savefig(f"graficos/{instancia}.png")
 
+def gerar_tabelas(variacao: str) -> None:
+    """
+    \begin{table}[H]
+        \centering
+        \begin{tabular}{|c|c|c|}
+             \hline
+             Instância & 2-opt (MSI) & \textit{pair-swap} (MSI) \\
+             \hline
+             u574 & 8.1\%& 9.89\% \\
+             pcb1173 & 8.7\%& 15.00\% \\
+             pr1002 & 7.2\%& 10.28\% \\
+             brd14051 & 7.8\%& 11.87\% \\
+             fnl4461 & 9.0\%& 11.73\% \\
+             d15112 & 7.9\%& 11.87\% \\
+             pla33810 & 7.1\%& 15.37\% \\
+             pla85900 & 6.0\%& 12.97\% \\
+             \hline
+        \end{tabular}
+        \caption{Comparação entre os menores GAPs obtidos com as heurísticas de 2-opt e \textit{pair-swap}. MSI: Melhor solução implementada}
+        \label{tab:my_label}
+    \end{table}
+    """
+    with open(f"tabelas/{variacao}.txt", "w+") as arquivo:
+        arquivo.write("\\begin\{table\}[H]\n")
+        arquivo.write("\\centering\n")
+        arquivo.write("\\begin\{tabular\}\{|c|c|c|c|c|\}\n")
+        arquivo.write("\\hline\n")
+        arquivo.write(f"\\Instância & MS & {variacao} & Tempo (s) & GAP%\n")
+        arquivo.write("\\hline\n")
+
+        for i in range(len(timestamps_gerados)):
+            if timestamps_gerados[i].startswith(variacao):
+                instancia = (timestamps_gerados[i].replace(".txt", "")).split(";")[-1]
+
+                indice_instancia = 0
+
+                for j, con in enumerate(arquivos_de_teste):
+                    if con.replace(".tsp", "") == instancia:
+                        indice_instancia = j
+
+                ms = melhores_solucoes_conhecidas[indice_instancia]
+
+                custo = resultados_obtidos[i][0]
+
+                tempo = resultados_obtidos[i][1]
+
+                gap = (custo - ms)/ms
+
+                gap *= 100
+
+                arquivo.write(f"{instancia} & {ms} & {custo} & {tempo} & {round(gap, 2)}")
+
+        arquivo.write("\\hline\n")
+        arquivo.write("\\end\{tabular\}[H]\n")
+        arquivo.write("\\caption\{Comparação entre as melhores soluções conhecidas da literatura e as obtidas pelo algoritmo\}[H]\n")
+        arquivo.write("\\label\{tab\:my_label\}\n")
+        arquivo.write("\\end\{table\}\n")
+
+    pass
+
 representacoes_cromossomos = ["per"]
 
 populacao_inicial = ["vmp", "ivmd"]
@@ -60,6 +120,8 @@ melhores_solucoes_conhecidas = []
 
 timestamps_gerados = []
 
+resultados_obtidos = []  # OBS: Guardar tuplas (custo, tempo), na mesma ordem do timestamps_gerados
+
 if __name__ == "__main__":
     
     # Testa todas as possibilidades
@@ -87,4 +149,4 @@ if __name__ == "__main__":
     for instancia in arquivos_de_teste:
         instancia = instancia.replace(".tsp", "")
 
-        gerar_graficos(instancia, timestamps_gerados)
+        # gerar_graficos(instancia, timestamps_gerados)
