@@ -419,26 +419,46 @@ void salvaResultados(float custoTotal, float tempoGasto)
 int main(int argc, char *argv[]) {
     srand(time(NULL));
 
-    if (argc < 3) {
-        printf("\nArgumentos incorretos, uso correto:\n[programa] arquivo_de_entrada.tsp [n:0-5]");
+    // Parâmetros:
+
+    /*
+        Windows:
+            executavel.exe [instancia] [construcao_inicial] [tamanho_populacao] [chance_mutacao] [criterio_parada]
+
+        Linux:
+            ./executavel [instancia] [construcao_inicial] [tamanho_populacao] [chance_mutacao] [criterio_parada]
+
+        Onde:
+        [instancia]: O caminho da instância a ser executada
+        [construcao_inicial]: 0 para VMP e 1 para IMVD
+        [tamanho_populacao]: Um valor inteiro positivo para o tamanho da população (>= 0)
+        [chance_mutacao]: Um valor entre 0-1 que indica a chance de alguma mutação ocorrer em um indivíduo
+        [criterio_parada]: O número de gerações sem melhoria para parar o algoritmo 
+    */  
+    
+    if (argc != 6) {
+        printf("\nArgumentos incorretos, uso correto: \n[programa] arquivo_de_entrada.tsp [construcao_inicial] [tamanho_populacao] [chance_mutacao] [criterio_parada]");
         printf("\n\nArgumentos:\n -- [programa]: O executavel compilado\n -- arquivo_de_entrada.tsp: O arquivo contendo a instancia a ser executada");
-        printf("\n -- n: Um inteiro de 0 a 5 indicando qual heuristica sera utilizada:");
+        printf("\n -- [construcao_inicial]: Indica qual heuristica sera utilizada:");
         printf("\n -- >> 0: Vizinho mais proximo");
-        printf("\n -- >> 1: Insercao do vizinho mais distante + escolha do ciclo inicial (opcao 0, 1 ou 2)");
-        printf("\n -- >> 2: Vizinho mais proximo + 2-opt");
-        printf("\n -- >> 3: Vizinho mais proximo + Pair Swap");
-        printf("\n -- >> 4: Insercao do vizinho mais distante + 2-opt");
-        printf("\n -- >> 5: Insercao do vizinho mais distante + Pair Swap");
+        printf("\n -- >> 1: Insercao do vizinho mais distante");
+        printf("\n -- [tamanho_populacao]: Um valor inteiro positivo para o tamanho da populacao (>= 0)");
+        printf("\n -- [chance_mutacao]: Um valor entre 0 e 1 que indica a chance de alguma mutacao ocorrer em um individuo");
+        printf("\n -- [criterio_parada]: O numero de geracoes sem melhoria para parar o algoritmo ");
         return 1;
     }
 
-    int algoritmoEscolhido = atoi(argv[2]);
+    int algoritmoConstrucaoInicial = atoi(argv[2]);
+    int tamanhoPopulacao = atoi(argv[3]);
+    float chanceMutacao = atof(argv[4]);
+    int numeroGeracoesSemMelhoriaParaParar = atoi(argv[5]);
 
-    if (algoritmoEscolhido < 0 || algoritmoEscolhido > 5) {
-        printf("\nErro: n deve ser um valor entre 0 e 5");
+    if (algoritmoConstrucaoInicial != 0 && algoritmoConstrucaoInicial != 1)
+    {
+        printf("\nErro: O algoritmo de construcao inicial deve ser 0 ou 1");
         return 1;
     }
-
+    
     FILE *arquivoEntrada = fopen(argv[1], "r");
     FILE *arquivoTimestamp = fopen("timestamp.txt", "w+");
 
@@ -454,66 +474,80 @@ int main(int argc, char *argv[]) {
 
     lerArquivo(arquivoEntrada, &listaDeVertices, &dimensao);
 
-    int *rotaFinal = malloc(sizeof(int) * (dimensao + 1));
+    // int *rotaFinal = malloc(sizeof(int) * (dimensao + 1));
 
     clock_t start, end;
     start = clock();
 
-    if (algoritmoEscolhido == 0) {
-        printf("\nAlgoritmo VIZINHO MAIS PROXIMO escolhido");
-        vizinhoMaisProximo(rotaFinal);
-    } else if (algoritmoEscolhido == 1) {
-        printf("\nAlgoritmo INSERCAO VIZINHO DO MAIS DISTANTE escolhido");
-        if (argc < 4) {
-            printf("\nErro: escolha de ciclo inicial nao fornecida");
-            return 1;
-        }
-        int cicloInicial = atoi(argv[3]);
-        if (cicloInicial == 0) {
-            int v1, v2, v3;
-            cicloInicialDet(&v1, &v2, &v3);
-            insercaoMaisDistante(rotaFinal, v1, v2, v3);
-        } else if (cicloInicial == 1) {
-            insercaoMaisDistante(rotaFinal, 0, 1, 2);
-        } else if (cicloInicial == 2) {
-            insercaoMaisDistante(rotaFinal, dimensao - 1, dimensao - 2, dimensao - 3);
-        } else {
-            printf("\nErro! Escolha de ciclo inicial <<%d>> invalida!", cicloInicial);
-            return 1;
-        }
-    } else if (algoritmoEscolhido == 2) {
-        printf("\nAlgoritmo VIZINHO MAIS PROXIMO com 2-OPT escolhido");
-        vizinhoMaisProximo(rotaFinal);
-        doisOpt(rotaFinal);
-    } else if (algoritmoEscolhido == 3) {
-        printf("\nAlgoritmo VIZINHO MAIS PROXIMO com PAIR SWAP escolhido");
-        vizinhoMaisProximo(rotaFinal);
-        pairSwap(rotaFinal);
-    } else if (algoritmoEscolhido == 4) {
-        printf("\nAlgoritmo INSERCAO VIZINHO DO MAIS DISTANTE com 2-OPT escolhido");
-        insercaoMaisDistante(rotaFinal, 0, 1, 2);
-        doisOpt(rotaFinal);
-    } else if (algoritmoEscolhido == 5) {
-        printf("\nAlgoritmo INSERCAO VIZINHO DO MAIS DISTANTE com PAIR SWAP escolhido");
-        insercaoMaisDistante(rotaFinal, 0, 1, 2);
-        pairSwap(rotaFinal);
-    } else {
-        printf("\nValor nao reconhecido, n deve ser um inteiro entre 0 e 5");
-        return 1;
+    booleano atingiuCriterioParada = False;
+
+    int contadorGeracoesSemMelhoria = numeroGeracoesSemMelhoriaParaParar;
+
+    printf("\nIniciando construcao inicial");
+
+    int custoMelhorRotaConhecida;
+    int indiceMelhorRotaConhecida;
+
+    // Alocando espaço para a população
+    int *populacao = malloc(sizeof(int) * tamanhoPopulacao);
+
+    for (int i = 0; i < tamanhoPopulacao; i++)
+    {
+        populacao[i] = malloc(sizeof(int) * (dimensao + 1));
+    }
+
+    if (algoritmoConstrucaoInicial == 0)
+    {
+        printf("\nVizinho mais proximo escolhido");
+        // gerarPopulacaoInicialVMP();
+    }
+    else 
+    {
+        printf("\nInsercao do vizinho mais distante escolhida");
+        // gerarPopulacaoInicialIVMD();
+    }
+
+    // buscar na populacao a melhor rota e atualizar o custoMelhorRotaConhecida e o seu indice
+    // salvar o valor no timestamp
+
+    while (atingiuCriterioParada == False)
+    {
+        // avaliarCromossomos();
+        // selecionarCromossomos();
+        // cruzarCromossomos();
+        // mutarCromossomos();
+        // buscaLocalCromossomos();
+        // atualizarPopulacao();
+
+        // buscar na populacao a melhor rota
+
+        // se ela for melhor que a melhorRotaConhecida, atualizar ela e o seu indice
+        //     redefinir o contadorGeracoesSemMelhoria para o valor inicial
+
+        // se não
+        //     subtrair 1 do contadorGeracoesSemMelhoria
+
+        // se o contador for igual a zero, atingiuCriterioDeParada = True
+
     }
 
     end = clock();
     double cpu_time_used = ((double)(end - start)) / CLOCKS_PER_SEC;
 
-    float custoTotal = calculaCustoRota(rotaFinal);
-
     printf("\nFinalizado! Tempo gasto: %lf", cpu_time_used);
-    printf("\nRota calculada: %f\n", custoTotal);
+    printf("\nRota calculada: %f\n", custoMelhorRotaConhecida);
 
-    exportaResultados(rotaFinal, custoTotal, argv[1], cpu_time_used);
+    exportaResultados(populacao[indiceMelhorRotaConhecida], custoMelhorRotaConhecida, argv[1], cpu_time_used);
 
     free(listaDeVertices);
-    free(rotaFinal);
+
+    for (int i = 0; i < tamanhoPopulacao; i++)
+    {
+        free(populacao[i]);
+    }
+
+    free(populacao);
+    
     fclose(arquivoEntrada);
     fclose(arquivoTimestamp);
 

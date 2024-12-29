@@ -1,5 +1,5 @@
 /*
-    Avaliação 2: Algoritmos heurísticos para o PCV
+    Avaliação 3: Algoritmo genético para o PCV
     Murilo Luis Calvo Neves - RA 129037
     Leandro Eugênio Farias Berton - RA 129268
 */
