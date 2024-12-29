@@ -33,31 +33,10 @@ def gerar_graficos(instancia: str) -> None:
     plt.savefig(f"graficos/{instancia}.png")
 
 def gerar_tabelas(variacao: str) -> None:
-    """
-    \begin{table}[H]
-        \centering
-        \begin{tabular}{|c|c|c|}
-             \hline
-             Instância & 2-opt (MSI) & \textit{pair-swap} (MSI) \\
-             \hline
-             u574 & 8.1\%& 9.89\% \\
-             pcb1173 & 8.7\%& 15.00\% \\
-             pr1002 & 7.2\%& 10.28\% \\
-             brd14051 & 7.8\%& 11.87\% \\
-             fnl4461 & 9.0\%& 11.73\% \\
-             d15112 & 7.9\%& 11.87\% \\
-             pla33810 & 7.1\%& 15.37\% \\
-             pla85900 & 6.0\%& 12.97\% \\
-             \hline
-        \end{tabular}
-        \caption{Comparação entre os menores GAPs obtidos com as heurísticas de 2-opt e \textit{pair-swap}. MSI: Melhor solução implementada}
-        \label{tab:my_label}
-    \end{table}
-    """
     with open(f"tabelas/{variacao}.txt", "w+") as arquivo:
-        arquivo.write("\\begin\{table\}[H]\n")
+        arquivo.write("\\begin{table}[H]\n")
         arquivo.write("\\centering\n")
-        arquivo.write("\\begin\{tabular\}\{|c|c|c|c|c|\}\n")
+        arquivo.write("\\begin{tabular}{|c|c|c|c|c|}\n")
         arquivo.write("\\hline\n")
         arquivo.write(f"\\Instância & MS & {variacao} & Tempo (s) & GAP%\n")
         arquivo.write("\\hline\n")
@@ -85,68 +64,93 @@ def gerar_tabelas(variacao: str) -> None:
                 arquivo.write(f"{instancia} & {ms} & {custo} & {tempo} & {round(gap, 2)}")
 
         arquivo.write("\\hline\n")
-        arquivo.write("\\end\{tabular\}[H]\n")
-        arquivo.write("\\caption\{Comparação entre as melhores soluções conhecidas da literatura e as obtidas pelo algoritmo\}[H]\n")
-        arquivo.write("\\label\{tab\:my_label\}\n")
-        arquivo.write("\\end\{table\}\n")
+        arquivo.write("\\end{tabular}[H]\n")
+        arquivo.write("\\caption{Comparação entre as melhores soluções conhecidas da literatura e as obtidas pelo algoritmo}[H]\n")
+        arquivo.write("\\label{tab:my_label}\n")
+        arquivo.write("\\end{table}\n")
 
-    pass
+populacao_inicial = ["0", "1"]
 
-representacoes_cromossomos = ["per"]
+numero_individuos = ["500", "1000"]
 
-populacao_inicial = ["vmp", "ivmd"]
+chances_mutacao = ["0.075"] # Acho que mexer muito não faz muita diferença e quadruplica os testes!
 
-selecao_individuos = ["torneio"]
-
-operadores_cruzamento = ["op_teste"]
-
-mutacao = ["mut_teste"]
-
-manutencao_populacao = ["steady"]
-
-numero_individuos = [100, 1000, 10000]
+criterio_parada = ["1", "256"] # Pra mostrar uma grande diferença!
 
 # TODO: Acho que ele quer TODAS as instância do Moodle, e em ordem também :/
-arquivos_de_teste =["brd14051.tsp",
-                    "d15112.tsp",
-                    "fnl4461.tsp",
+arquivos_de_teste =[
+                    "u574.tsp"
                     "pcb1173.tsp",
+                    "pr1002.tsp",
+                    "brd14051.tsp",
+                    "fnl4461.tsp",
+                    "d15112.tsp",
                     "pla33810.tsp",
                     "pla85900.tsp",
-                    "pr1002.tsp",
-                    "u574.tsp"]
+                    ]
 
-melhores_solucoes_conhecidas = []
+melhores_solucoes_conhecidas = [
+                                36905,    # u574
+                                56892,    # pcb1173
+                                295045,   # pr1002
+                                469385,   # brd14051
+                                182566,   # fnl4461
+                                1573084,  # d15112
+                                66048945, # pla33810 
+                                142382641,# pla85900
+                                ]
 
-timestamps_gerados = []
+timestamps_gerados = []  # Arquivos .txt gerados e salvos
 
 resultados_obtidos = []  # OBS: Guardar tuplas (custo, tempo), na mesma ordem do timestamps_gerados
 
 if __name__ == "__main__":
     
-    # Testa todas as possibilidades
-    for repr_cromossomos in representacoes_cromossomos:
-        for pop_init in populacao_inicial:
-            for selec_indiv in selecao_individuos:
-                for op_cruz in operadores_cruzamento:
-                    for mut in mutacao:
-                        for manut_populacao in manutencao_populacao:
-                            for num_indiv in numero_individuos:
-                                for instancia in arquivos_de_teste:
-                                    str_nome_teste = f"{repr_cromossomos};{pop_init};{selec_indiv};{op_cruz};{mut};{manut_populacao};{num_indiv};{instancia.replace(".tsp", "")}"
-                                    print(f"Realizando teste com os seguintes paramentros: {str_nome_teste}")
+    # executavel.exe [instancia] [construcao_inicial] [tamanho_populacao] [chance_mutacao] [criterio_parada]
+    
+    num_total_testes = len(populacao_inicial) * len(numero_individuos) * len(chances_mutacao) * len(criterio_parada) * len(arquivos_de_teste)
 
-                                    # Verificar se existe já um timestamp para essa execução, se sim, pule este caso
+    num_executado_de_testes = 0
 
-                                    # Montar string de execução para o arquivo em C
+    for construcao_inicial in populacao_inicial:
+        for tam_pop in numero_individuos:
+            for chance_mut in chances_mutacao:
+                for qtd_parada in criterio_parada:                    
+                    for instancia in arquivos_de_teste:
+                        
+                        str_nome_teste = f"{construcao_inicial}-{tam_pop}-{chance_mut.replace(".","")}-{qtd_parada}-{instancia.replace(".tsp", "")}"
 
-                                    # Chamar o sistema com o executável
+                        # Aqui dá pra fazer um igualzinho pra linux e só trocar na hora de executar mesmo
+                        str_execucao_windows = f"tsp.exe instancias/{instancia} {construcao_inicial} {tam_pop} {chance_mut} {qtd_parada}"
+                        print(f"Realizando teste com os seguintes parametros: {str_execucao_windows}")
+                        
+                        # Verifica se existe já um timestamp para essa execução, se sim, pula
+                        if os.path.isfile(f"timestamps/{str_nome_teste}.txt"):
+                            continue
 
-                                    # Renomear o timestamp gerado para o arquivo com o nome específico
+                        os.system(str_execucao_windows)
+                        
+                        # Abrir o timestamp e pegar a última linha (tempo e custo)
+                                      
+                        shutil.move('timestamp.txt', f'timestamps/{str_nome_teste}.txt')
 
-                                    # Guardar o nome no timestamps_gerados (blablabla;instancia.txt)
+                        timestamps_gerados.append(f"{str_nome_teste}.txt")  
+
+                        # valores = (tempo, custo)
+                        # resultados_obtidos.append(valores)
+
+                        num_executado_de_testes += 1
+                        print(f"Teste numero {num_executado_de_testes} de {num_total_testes} feito [{round((num_executado_de_testes*100)/num_total_testes, 2)}%]")
 
     for instancia in arquivos_de_teste:
         instancia = instancia.replace(".tsp", "")
 
-        # gerar_graficos(instancia, timestamps_gerados)
+        gerar_graficos(instancia, timestamps_gerados)
+
+    for variacao in timestamps_gerados:
+        variacao = "".join(variacao.split("-")[0:-1])
+
+        if os.path.isfile(f"tabelas/{variacao}.txt"):
+            continue
+
+        gerar_tabelas(variacao)
