@@ -28,6 +28,8 @@ clock_t inicioMelhoramento;
 // TODO: criar um cabeçalho com todas as funções
 
 void vizinhoMaisProximo(int* rotaFinal);
+float calculaCustoRota(int* rota);
+
 
 populacao* gerarPopulacaoInicial(int tamanho)
 {
@@ -55,15 +57,18 @@ populacao* gerarPopulacaoInicial(int tamanho)
 
 void avaliarCromossomos (populacao* populacao_atual)
 {
-
+    for (int i = 0; i < populacao_atual->tamanho; i++)
+    {
+        populacao_atual->avaliacao[i] = calculaCustoRota(populacao_atual->cromossomo[i]);
+    }
 }
+
+
 
 void printTimestamp(float custo)
 {
     fprintf(arquivoTimestamp, "%f %f \n", ((float) (clock() - inicioMelhoramento)) / CLOCKS_PER_SEC, custo);
 }
-
-float calculaCustoRota(int* rota);
 
 float calculaDistancia(coordenada* c1, coordenada* c2)
 {
