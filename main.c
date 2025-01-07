@@ -12,11 +12,51 @@
 #include"leitura_arquivo.h"
 
 #define TAM_BUFFER_ENTRADA 1024
+#define LIMITE_ALOCACAO 500
+typedef struct populacao
+{
+    int tamanho;
+    int **cromossomo;
+    float *avaliacao;
+}populacao;
 
 FILE* arquivoTimestamp;
 coordenada* listaDeVertices;
 int dimensao;
 clock_t inicioMelhoramento;
+
+// TODO: criar um cabeçalho com todas as funções
+
+void vizinhoMaisProximo(int* rotaFinal);
+
+populacao* gerarPopulacaoInicial(int tamanho)
+{
+    if (tamanho > LIMITE_ALOCACAO)
+    {
+        printf("Limite de alocação atingido!");
+        return NULL;
+    }
+    
+    populacao* nova_populacao = malloc(sizeof(populacao));
+    nova_populacao->tamanho = tamanho;
+    nova_populacao->avaliacao = malloc(sizeof(float) * tamanho);
+    nova_populacao->cromossomo = malloc(sizeof(int*) * tamanho);
+
+    // loop que inicializa cada cromossomo
+    for (int i = 0; i < tamanho; i++)
+    {
+        nova_populacao->avaliacao[i] = 0.0;
+        nova_populacao->cromossomo[i] = malloc(sizeof(int) * (dimensao + 1));
+        vizinhoMaisProximo(nova_populacao->cromossomo[i]);
+    }
+    
+    return nova_populacao;
+}
+
+void avaliarCromossomos (populacao* populacao_atual)
+{
+
+}
 
 void printTimestamp(float custo)
 {
