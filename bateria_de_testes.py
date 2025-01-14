@@ -69,15 +69,14 @@ def gerar_tabelas(variacao: str) -> None:
         arquivo.write("\\label{tab:my_label}\n")
         arquivo.write("\\end{table}\n")
 
-populacao_inicial = ["0", "1"]
+algoritmo_cruzamento = ["0", "1"]
 
-numero_individuos = ["500", "1000"]
+numero_individuos = ["50", "100"]
 
-chances_mutacao = ["0.075"] # Acho que mexer muito não faz muita diferença e quadruplica os testes!
+chances_mutacao = ["0.075"]
 
-criterio_parada = ["1", "256"] # Pra mostrar uma grande diferença!
+criterio_parada = ["16", "256"]
 
-# TODO: Acho que ele quer TODAS as instância do Moodle, e em ordem também :/
 arquivos_de_teste =[
                     "u574.tsp"
                     "pcb1173.tsp",
@@ -106,22 +105,22 @@ resultados_obtidos = []  # OBS: Guardar tuplas (custo, tempo), na mesma ordem do
 
 if __name__ == "__main__":
     
-    # executavel.exe [instancia] [construcao_inicial] [tamanho_populacao] [chance_mutacao] [criterio_parada]
+    # executavel.exe [instancia] [operador_crz] [tamanho_populacao] [chance_mutacao] [criterio_parada]
     
-    num_total_testes = len(populacao_inicial) * len(numero_individuos) * len(chances_mutacao) * len(criterio_parada) * len(arquivos_de_teste)
+    num_total_testes = len(algoritmo_cruzamento) * len(numero_individuos) * len(chances_mutacao) * len(criterio_parada) * len(arquivos_de_teste)
 
     num_executado_de_testes = 0
 
-    for construcao_inicial in populacao_inicial:
+    for operador_crz in algoritmo_cruzamento:
         for tam_pop in numero_individuos:
             for chance_mut in chances_mutacao:
                 for qtd_parada in criterio_parada:                    
                     for instancia in arquivos_de_teste:
                         
-                        str_nome_teste = f"{construcao_inicial}-{tam_pop}-{chance_mut.replace(".","")}-{qtd_parada}-{instancia.replace(".tsp", "")}"
+                        str_nome_teste = f"{operador_crz}-{tam_pop}-{chance_mut.replace(".","")}-{qtd_parada}-{instancia.replace(".tsp", "")}"
 
                         # Aqui dá pra fazer um igualzinho pra linux e só trocar na hora de executar mesmo
-                        str_execucao_windows = f"tsp.exe instancias/{instancia} {construcao_inicial} {tam_pop} {chance_mut} {qtd_parada}"
+                        str_execucao_windows = f"tsp.exe instancias/{instancia} {operador_crz} {tam_pop} {chance_mut} {qtd_parada}"
                         print(f"Realizando teste com os seguintes parametros: {str_execucao_windows}")
                         
                         # Verifica se existe já um timestamp para essa execução, se sim, pula

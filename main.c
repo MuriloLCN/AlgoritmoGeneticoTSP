@@ -13,6 +13,7 @@
 
 #define TAM_BUFFER_ENTRADA 1024
 #define LIMITE_ALOCACAO 500
+
 typedef struct populacao
 {
     int tamanho;
@@ -64,7 +65,6 @@ void avaliarCromossomos (populacao* populacao_atual)
 }
 
 
-
 void printTimestamp(float custo)
 {
     fprintf(arquivoTimestamp, "%f %f \n", ((float) (clock() - inicioMelhoramento)) / CLOCKS_PER_SEC, custo);
@@ -79,7 +79,7 @@ float calculaDistancia(coordenada* c1, coordenada* c2)
 
 void vizinhoMaisProximo(int* rotaFinal)
 {
-    int atual = 0;
+    int atual = (int)rand() % dimensao;
     int inicial = atual;
 
     int indiceRota = 0;
@@ -132,160 +132,7 @@ void vizinhoMaisProximo(int* rotaFinal)
     // Retorna ao vértice inicial
     rotaFinal[indiceRota] = inicial;
     distanciaTotal += calculaDistancia(&listaDeVertices[atual], &listaDeVertices[inicial]);
-    printf("\nDistancia total percorrida: %2f\n", distanciaTotal);
-}
-
-void cicloInicialDet(int* v1, int*v2, int* v3)
-{
-    /*
-        Encontra dois vértices mais distantes e, em seguida, encontra um terceiro vértice
-        cuja a soma das distâncias entre os dois vértices iniciais é máxima.
-
-    */
-
-    float distanciaMax = -INFINITY, distanciaTemp;
-
-    for (int i = 0; i < dimensao; i++)
-    {
-        for (int j = 0; j < dimensao; j++)
-        {
-            distanciaTemp = calculaDistancia(&listaDeVertices[i], &listaDeVertices[j]);
-            if (distanciaTemp > distanciaMax)
-            {
-                distanciaMax = distanciaTemp;
-                *v1 = i;
-                *v2 = j;
-            }   
-        }
-    }
-
-    distanciaMax = -INFINITY;
-    for (int i = 0; i < dimensao; i++)
-    {
-        distanciaTemp = calculaDistancia(&listaDeVertices[*v1], &listaDeVertices[i]) + calculaDistancia(&listaDeVertices[*v2], &listaDeVertices[i]);
-        if (distanciaTemp > distanciaMax)
-        {
-            distanciaMax = distanciaTemp;
-            *v3 = i;
-        }   
-    }
-
-    printf("Ciclo inicial: %d -> %d -> %d -> %d", *v1, *v2, *v3, *v1);
-}
-
-void insercaoMaisDistante(int* rotaFinal, int v1, int v2, int v3)
-{
-    // considerando que, devido ao ciclo inicial, já temos 3 vértices na solução
-    int indiceRota = 3;
-
-    booleano visitados[dimensao];
-    for (int i = 0; i < dimensao; i++)
-    {
-        visitados[i] = False;
-    }
-
-    // int vertice1, vertice2, vertice3;
-    // cicloInicialNDet(&vertice1, &vertice2, &vertice3);
-
-    visitados[v1] = True;
-    visitados[v2] = True;
-    visitados[v3] = True;
-    
-    rotaFinal[0] = v1;
-    rotaFinal[1] = v2;
-    rotaFinal[2] = v3;
-    rotaFinal[3] = v1;
-
-    int proxInsercao;
-    float ultimaDistanciaMaxima=-INFINITY, distanciaTemp;
-
-    // para cada vertice Vk externo, calcular a menor distância entre o vértice Vk e o ciclo
-    // distanciaMinima é um vetor para guardar a distância mínima entre o ciclo e um vértice externo Vk
-    float* distanciaMinima = malloc(sizeof(float) * dimensao); 
-    for (int i = 0; i < dimensao; i++)
-    {
-        distanciaMinima[i] = INFINITY;
-    }
-
-    for (int Vk = 0; Vk < dimensao; Vk++)
-    {
-        // se o vértice não pertence ao ciclo
-        if (visitados[Vk] == False)
-        {
-            // calcula a menor distância entre o vértice Vk e o ciclo
-            for (int i = 0; i < indiceRota; i++)
-            {
-                distanciaTemp = calculaDistancia(&listaDeVertices[Vk], &listaDeVertices[rotaFinal[i]]);
-                if (distanciaTemp < distanciaMinima[Vk])
-                {
-                    distanciaMinima[Vk] = distanciaTemp;
-                }
-            }
-        }
-    }
-
-    // para cada vertice Vk externo, calcular a distância entre os vértices do ciclo
-    // enquanto existir vertice para inserir ...
-    while (indiceRota < dimensao)
-    {
-        ultimaDistanciaMaxima=-INFINITY;
-        for (int Vk = 0; Vk < dimensao; Vk++)
-        {
-            // se o vértice ainda não pertence ao ciclo
-            if (visitados[Vk] == False)
-            {
-                if (distanciaMinima[Vk] > ultimaDistanciaMaxima)
-                {
-                    ultimaDistanciaMaxima = distanciaMinima[Vk];
-                    proxInsercao = Vk;
-                }
-            }
-        }
-
-        float custoAtual, custoMinimo=INFINITY;
-        int indiceCustoMinimo;
-
-        // inserir vertice Vk escolhido no local que causa o menor impacto no custo (distância)
-        // segue-se o critérido de achar a posição em que {d(Vi, Vk) + d(Vk, Vi+1) - d(Vi, Vi+1)} é mínimo
-        for (int i = 0; i < indiceRota; i++)
-        {
-            custoAtual = calculaDistancia(&listaDeVertices[rotaFinal[i]], &listaDeVertices[proxInsercao])
-                         + calculaDistancia(&listaDeVertices[proxInsercao], &listaDeVertices[rotaFinal[i+1]])
-                         - calculaDistancia(&listaDeVertices[rotaFinal[i]], &listaDeVertices[rotaFinal[i+1]]);
-            // TODO alterar < para <= e ver se melhora a solução
-            if (custoAtual < custoMinimo)
-            {
-                custoMinimo = custoAtual;
-                indiceCustoMinimo = i + 1; // o indice de custo mínimo é a posição no vetor de rota onde será inserido Vk
-            }
-        }
-
-        // mais um vértice entra para rota
-        indiceRota++;
-        // deslocando cada posição para direita, do fim do vetor até a posição onde será inserido Vk
-        for (int indiceCiclo = indiceRota; indiceCiclo > indiceCustoMinimo; indiceCiclo--)
-        {
-            rotaFinal[indiceCiclo] = rotaFinal[indiceCiclo-1];
-        }
-        rotaFinal[indiceCustoMinimo] = proxInsercao;
-        visitados[proxInsercao] = True;
-        // printf("%d/%d\n", indiceRota, dimensao);
-
-        // atualizando o vetor de distâncias mínimas
-        for (int Vk = 0; Vk < dimensao; Vk++)
-        {
-            // se o vértice não pertence ao ciclo
-            if (visitados[Vk] == False)
-            {
-                float novaDistancia = calculaDistancia(&listaDeVertices[Vk], &listaDeVertices[proxInsercao]);
-                if (novaDistancia < distanciaMinima[Vk])
-                {
-                    distanciaMinima[Vk] = novaDistancia;
-                }
-            }
-
-        }
-    }
+    // printf("\nDistancia total percorrida: %2f\n", distanciaTotal);
 }
 
 void troca(int* rota, int i, int j)
@@ -293,56 +140,6 @@ void troca(int* rota, int i, int j)
     int buffer = rota[i];
     rota[i] = rota[j];
     rota[j] = buffer;    
-}
-
-void pairSwap(int* rota) 
-{
-    float deltaSemTroca, deltaComTroca, delta;
-    int numElementos = dimensao + 1;
-    float custoAtual = calculaCustoRota(rota);
-
-    for (int i = 0; i < dimensao; i++)
-        {
-        for (int j = 0; j <= dimensao; j++)
-        {
-            if (j == i+1)
-            {
-                deltaSemTroca = calculaDistancia(&listaDeVertices[rota[(i-1+numElementos)%numElementos]], &listaDeVertices[rota[i]]) +
-                    calculaDistancia(&listaDeVertices[rota[j]], &listaDeVertices[rota[(j+1)%numElementos]]);
-                deltaComTroca = deltaComTroca = calculaDistancia(&listaDeVertices[rota[(i-1+numElementos)%numElementos]], &listaDeVertices[rota[j]]) +
-                    calculaDistancia(&listaDeVertices[rota[i]], &listaDeVertices[rota[(j+1)%numElementos]]);
-            }
-            else if (j == i-1)
-            {
-                deltaSemTroca = calculaDistancia(&listaDeVertices[rota[(j-1+numElementos)%numElementos]], &listaDeVertices[rota[j]]) +
-                    calculaDistancia(&listaDeVertices[rota[i]], &listaDeVertices[rota[(i+1)%numElementos]]);
-                deltaComTroca = deltaComTroca = calculaDistancia(&listaDeVertices[rota[(j-1+numElementos)%numElementos]], &listaDeVertices[rota[i]]) +
-                    calculaDistancia(&listaDeVertices[rota[j]], &listaDeVertices[rota[(i+1)%numElementos]]);
-            }
-
-            else
-            {
-                deltaSemTroca = calculaDistancia(&listaDeVertices[rota[(i-1+numElementos)%numElementos]], &listaDeVertices[rota[i]]) +
-                    calculaDistancia(&listaDeVertices[rota[i]], &listaDeVertices[rota[i+1]]) +
-                    calculaDistancia(&listaDeVertices[rota[(j-1+numElementos)%numElementos]], &listaDeVertices[rota[j]]) +
-                    calculaDistancia(&listaDeVertices[rota[j]], &listaDeVertices[rota[(j+1)%numElementos]]);
-                
-                deltaComTroca = calculaDistancia(&listaDeVertices[rota[(i-1+numElementos)%numElementos]], &listaDeVertices[rota[j]]) +
-                    calculaDistancia(&listaDeVertices[rota[j]], &listaDeVertices[rota[i+1]]) +
-                    calculaDistancia(&listaDeVertices[rota[(j-1+numElementos)%numElementos]], &listaDeVertices[rota[i]]) +
-                    calculaDistancia(&listaDeVertices[rota[i]], &listaDeVertices[rota[(j+1)%numElementos]]);
-            }
-
-            delta = deltaComTroca - deltaSemTroca;
-            
-            if (delta < 0) // se houve uma diminuição do custo
-            {
-                // custoAtual += delta;
-                // printTimestamp(custoAtual);
-                troca(rota, i, j);
-            }
-        }
-    }
 }
 
 void exportaResultados(int* rotaFinal, float custoTotal, char* nomeArquivo, float tempoGasto)
@@ -396,7 +193,7 @@ void trocar_pontas(int* rotaFinal, int i, int j)
 void doisOpt(int* rotaFinal)
 {
     /*
-        Realiza a heurística de melhoramento 2-opt aplicado ao first improvement
+        Realiza a heurística de melhoramento 2-opt aplicado ao first improvement. Apenas um passo.
 
         Baseado em: https://en.wikipedia.org/wiki/2-opt
 
@@ -405,61 +202,48 @@ void doisOpt(int* rotaFinal)
     */
     
     int n = dimensao;
-    booleano encontrouMelhoria = True;
-
-    clock_t atual = clock();
-
-    float tempoLimiteSegundos = 30;
+    
+    // TODO: Trabalhar com o i-ésimo elemento da população para evitar re-calcular o custo a cada vez
 
     float tamanhoAtual = calculaCustoRota(rotaFinal);
 
-    while (encontrouMelhoria == True)
+    for (int i = 0; i < n - 1; i++)
     {
-        encontrouMelhoria = False;
-        for (int i = 0; i < n - 1; i++)
+        for (int j = i + 2; j < n; j++)
         {
-            for (int j = i + 2; j < n; j++)
+            float d1 = -calculaDistancia(&(listaDeVertices[rotaFinal[i]]), &(listaDeVertices[rotaFinal[(i+1)]]));
+            float d2 = -calculaDistancia(&(listaDeVertices[rotaFinal[j]]), &(listaDeVertices[rotaFinal[(j+1) % n]]));
+            float d3 = calculaDistancia(&(listaDeVertices[rotaFinal[i]]), &(listaDeVertices[rotaFinal[j]]));
+            float d4 = calculaDistancia(&(listaDeVertices[rotaFinal[(i+1)]]), &(listaDeVertices[rotaFinal[(j+1) % n]]));
+
+            float delta = d1 + d2 + d3 + d4;
+
+            if (delta < 0)
             {
-                if (((double) (clock() - atual)) / CLOCKS_PER_SEC > tempoLimiteSegundos)
-                {
-                    break;
-                }
-                float d1 = -calculaDistancia(&(listaDeVertices[rotaFinal[i]]), &(listaDeVertices[rotaFinal[(i+1)]]));
-                float d2 = -calculaDistancia(&(listaDeVertices[rotaFinal[j]]), &(listaDeVertices[rotaFinal[(j+1) % n]]));
-                float d3 = calculaDistancia(&(listaDeVertices[rotaFinal[i]]), &(listaDeVertices[rotaFinal[j]]));
-                float d4 = calculaDistancia(&(listaDeVertices[rotaFinal[(i+1)]]), &(listaDeVertices[rotaFinal[(j+1) % n]]));
-
-                float delta = d1 + d2 + d3 + d4;
-
-                if (delta < 0)
-                {
-                    atual = clock();
-                    trocar_pontas(rotaFinal, i, j);
-                    tamanhoAtual += delta;
-                    encontrouMelhoria = True;
-                    // printf("\nEncontrou melhoria! Custo atual: %f", tamanhoAtual);
-                    // printTimestamp(tamanhoAtual);
-                }
+                atual = clock();
+                trocar_pontas(rotaFinal, i, j);
+                tamanhoAtual += delta;
             }
         }
     }
+    
 }
 
-void salvaResultados(float custoTotal, float tempoGasto)
-{
-    FILE* arquivoDeSaida;
+// void salvaResultados(float custoTotal, float tempoGasto)
+// {
+//     FILE* arquivoDeSaida;
 
-    arquivoDeSaida = fopen("resultados-IMD.txt", "a");
+//     arquivoDeSaida = fopen("resultados-IMD.txt", "a");
 
-    // fprintf(arquivoDeSaida, "++++++++++++++++++  %s  ++++++++++++++++++", nomeInstancia);
+//     // fprintf(arquivoDeSaida, "++++++++++++++++++  %s  ++++++++++++++++++", nomeInstancia);
 
-    fprintf(arquivoDeSaida, "\nTempo computando (em segundos): ");
-    fprintf(arquivoDeSaida, "%f", tempoGasto);
-    fprintf(arquivoDeSaida, "\nCusto total: ");
-    fprintf(arquivoDeSaida, "%f\n", custoTotal);
+//     fprintf(arquivoDeSaida, "\nTempo computando (em segundos): ");
+//     fprintf(arquivoDeSaida, "%f", tempoGasto);
+//     fprintf(arquivoDeSaida, "\nCusto total: ");
+//     fprintf(arquivoDeSaida, "%f\n", custoTotal);
 
-    fclose(arquivoDeSaida);
-}
+//     fclose(arquivoDeSaida);
+// }
 
 int main(int argc, char *argv[]) {
     srand(time(NULL));
@@ -468,39 +252,39 @@ int main(int argc, char *argv[]) {
 
     /*
         Windows:
-            executavel.exe [instancia] [construcao_inicial] [tamanho_populacao] [chance_mutacao] [criterio_parada]
+            executavel.exe [instancia] [operador_cruzamento] [tamanho_populacao] [chance_mutacao] [criterio_parada]
 
         Linux:
-            ./executavel [instancia] [construcao_inicial] [tamanho_populacao] [chance_mutacao] [criterio_parada]
+            ./executavel [instancia] [operador_cruzamento] [tamanho_populacao] [chance_mutacao] [criterio_parada]
 
         Onde:
         [instancia]: O caminho da instância a ser executada
-        [construcao_inicial]: 0 para VMP e 1 para IMVD
+        [operador_cruzamento]: 0 para [operador 1] e 1 para [operador 2]
         [tamanho_populacao]: Um valor inteiro positivo para o tamanho da população (>= 0)
         [chance_mutacao]: Um valor entre 0-1 que indica a chance de alguma mutação ocorrer em um indivíduo
         [criterio_parada]: O número de gerações sem melhoria para parar o algoritmo 
     */  
     
     if (argc != 6) {
-        printf("\nArgumentos incorretos, uso correto: \n[programa] arquivo_de_entrada.tsp [construcao_inicial] [tamanho_populacao] [chance_mutacao] [criterio_parada]");
+        printf("\nArgumentos incorretos, uso correto: \n[programa] arquivo_de_entrada.tsp [operador_cruzamento] [tamanho_populacao] [chance_mutacao] [criterio_parada]");
         printf("\n\nArgumentos:\n -- [programa]: O executavel compilado\n -- arquivo_de_entrada.tsp: O arquivo contendo a instancia a ser executada");
-        printf("\n -- [construcao_inicial]: Indica qual heuristica sera utilizada:");
-        printf("\n -- >> 0: Vizinho mais proximo");
-        printf("\n -- >> 1: Insercao do vizinho mais distante");
+        printf("\n -- [operador_cruzamento]: Indica qual heuristica sera utilizada:");
+        printf("\n -- >> 0: Operador 1");
+        printf("\n -- >> 1: Operador 2");
         printf("\n -- [tamanho_populacao]: Um valor inteiro positivo para o tamanho da populacao (>= 0)");
         printf("\n -- [chance_mutacao]: Um valor entre 0 e 1 que indica a chance de alguma mutacao ocorrer em um individuo");
         printf("\n -- [criterio_parada]: O numero de geracoes sem melhoria para parar o algoritmo ");
         return 1;
     }
 
-    int algoritmoConstrucaoInicial = atoi(argv[2]);
+    int algoritmoCruzamento = atoi(argv[2]);
     int tamanhoPopulacao = atoi(argv[3]);
     float chanceMutacao = atof(argv[4]);
     int numeroGeracoesSemMelhoriaParaParar = atoi(argv[5]);
 
-    if (algoritmoConstrucaoInicial != 0 && algoritmoConstrucaoInicial != 1)
+    if (algoritmoCruzamento != 0 && algoritmoCruzamento != 1)
     {
-        printf("\nErro: O algoritmo de construcao inicial deve ser 0 ou 1");
+        printf("\nErro: O operador de cruzamento deve ser 0 ou 1");
         return 1;
     }
     
@@ -519,8 +303,6 @@ int main(int argc, char *argv[]) {
 
     lerArquivo(arquivoEntrada, &listaDeVertices, &dimensao);
 
-    // int *rotaFinal = malloc(sizeof(int) * (dimensao + 1));
-
     clock_t start, end;
     start = clock();
 
@@ -534,22 +316,19 @@ int main(int argc, char *argv[]) {
     int indiceMelhorRotaConhecida;
 
     // Alocando espaço para a população
-    int *populacao = malloc(sizeof(int) * tamanhoPopulacao);
+    // int *populacao = malloc(sizeof(int) * tamanhoPopulacao);
+
+    // for (int i = 0; i < tamanhoPopulacao; i++)
+    // {
+    //     populacao[i] = malloc(sizeof(int) * (dimensao + 1));
+    // }
+
+    populacao* pop = gerarPopulacaoInicial(tamanhoPopulacao);
 
     for (int i = 0; i < tamanhoPopulacao; i++)
     {
-        populacao[i] = malloc(sizeof(int) * (dimensao + 1));
-    }
-
-    if (algoritmoConstrucaoInicial == 0)
-    {
-        printf("\nVizinho mais proximo escolhido");
-        // gerarPopulacaoInicialVMP();
-    }
-    else 
-    {
-        printf("\nInsercao do vizinho mais distante escolhida");
-        // gerarPopulacaoInicialIVMD();
+        // Montar populacao inicial
+        // TODO: Buscar maneira de usar threads aqui
     }
 
     // buscar na populacao a melhor rota e atualizar o custoMelhorRotaConhecida e o seu indice
