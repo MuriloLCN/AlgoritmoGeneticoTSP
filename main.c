@@ -63,7 +63,75 @@ void avaliarCromossomos (populacao* populacao_atual)
     }
 }
 
+booleano pertence_regiao(float lx, float ly, coordenada coordenadaInicial, coordenada atual)
+{
+    if ((atual.x <= (coordenadaInicial.x + lx)) && (atual.x >= (coordenadaInicial.x - lx)) && (atual.y <= (coordenadaInicial.y + ly)) && (atual.y >= (coordenadaInicial.y - ly)))
+        return True;
+    else 
+        return False;
+}
 
+void calcula_variacao_coordenadas (float* dx, float* dy)
+{
+    float max_x = -INFINITY, min_x = INFINITY, max_y = -INFINITY, min_y = INFINITY;
+
+    for (int i = 0; i < dimensao; i++)
+    {
+        if ((&listaDeVertices[i])->x > max_x)
+            max_x = (&listaDeVertices[i])->x;
+    }
+
+    for (int i = 0; i < dimensao; i++)
+    {
+        if ((&listaDeVertices[i])->y > max_y)
+            max_y = (&listaDeVertices[i])->y;
+    }
+
+    for (int i = 0; i < dimensao; i++)
+    {
+        if ((&listaDeVertices[i])->x < min_x)
+            min_x = (&listaDeVertices[i])->x;
+    }
+
+    for (int i = 0; i < dimensao; i++)
+    {
+        if ((&listaDeVertices[i])->x < min_y)
+            min_y = (&listaDeVertices[i])->y;
+    }
+
+    *dx = max_x - min_x;
+    *dy = max_y - min_y;
+}
+
+void gerar_conjunto_pertencente_regiao (float alpha, int* rotaFinal, int* vet)
+{
+    // calcula Xw e Yw
+    float x_largura, y_altura;
+    calcula_variacao_coordenadas(&x_largura, &y_altura);
+    // calula Lx e Ly
+    float lx = x_largura * alpha;
+    float ly = y_altura * alpha;
+
+    // sorteia a cidade
+    int ind_cidade_inicial = rand() % dimensao;
+    coordenada cidade_inicial = listaDeVertices[ind_cidade_inicial];
+
+    // aloca dinamicamente vet
+    vet = malloc(sizeof(int) * (dimensao+1));
+    for (int i = 0; i <= dimensao; i++)
+    {
+        vet[i] = 0;
+    }
+
+    // pra cada cidade da rota final, veficiar se pertence a regiao e atualizar o vet
+    for (int i = 0; i <= dimensao; i++)
+    {
+        if (pertence_regiao(lx, ly, cidade_inicial, listaDeVertices[rotaFinal[i]]))
+        {
+            vet[rotaFinal[i]] = 1;
+        }
+    }
+}
 
 void printTimestamp(float custo)
 {
@@ -79,7 +147,7 @@ float calculaDistancia(coordenada* c1, coordenada* c2)
 
 void vizinhoMaisProximo(int* rotaFinal)
 {
-    int atual = 0;
+    int atual = rand() % dimensao;
     int inicial = atual;
 
     int indiceRota = 0;
