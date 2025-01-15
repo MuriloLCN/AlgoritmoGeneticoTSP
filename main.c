@@ -26,11 +26,8 @@ coordenada* listaDeVertices;
 int dimensao;
 clock_t inicioMelhoramento;
 
-// TODO: criar um cabeçalho com todas as funções
-
 void vizinhoMaisProximo(int* rotaFinal);
 float calculaCustoRota(int* rota);
-
 
 populacao* gerarPopulacaoInicial(int tamanho)
 {
@@ -64,7 +61,6 @@ void avaliarCromossomos (populacao* populacao_atual)
     }
 }
 
-
 void printTimestamp(float custo)
 {
     fprintf(arquivoTimestamp, "%f %f \n", ((float) (clock() - inicioMelhoramento)) / CLOCKS_PER_SEC, custo);
@@ -77,7 +73,7 @@ float calculaDistancia(coordenada* c1, coordenada* c2)
     return sqrt(dx*dx + dy*dy);
 }
 
-void vizinhoMaisProximo(int* rotaFinal)
+void vizinhoMaisProximo(int* rota)
 {
     int atual = (int)rand() % dimensao;
     int inicial = atual;
@@ -92,10 +88,8 @@ void vizinhoMaisProximo(int* rotaFinal)
     }
 
     visitados[atual] = True;
-    rotaFinal[indiceRota] = atual;
+    rota[indiceRota] = atual;
     indiceRota++;
-
-    float distanciaTotal = 0.0;
 
     for (int passo = 1; passo < dimensao; passo++)
     {
@@ -122,17 +116,13 @@ void vizinhoMaisProximo(int* rotaFinal)
         }
 
         visitados[prox] = 1;
-        distanciaTotal += menorDistancia;
         atual = prox;
 
-        rotaFinal[indiceRota] = atual;
+        rota[indiceRota] = atual;
         indiceRota++;
     }
 
-    // Retorna ao vértice inicial
-    rotaFinal[indiceRota] = inicial;
-    distanciaTotal += calculaDistancia(&listaDeVertices[atual], &listaDeVertices[inicial]);
-    // printf("\nDistancia total percorrida: %2f\n", distanciaTotal);
+    rota[indiceRota] = inicial;
 }
 
 void troca(int* rota, int i, int j)
@@ -190,7 +180,7 @@ void trocar_pontas(int* rotaFinal, int i, int j)
     }
 }
 
-void doisOpt(int* rotaFinal)
+void doisOpt(populacao* pop, int i)
 {
     /*
         Realiza a heurística de melhoramento 2-opt aplicado ao first improvement. Apenas um passo.
@@ -200,12 +190,11 @@ void doisOpt(int* rotaFinal)
         Parâmetros:
             *rotaFinal: um vetor com DIMESAO+1 elementos que define a ordem dos vértices a serem visitados
     */
+    int* rotaFinal = pop->cromossomo[i];
     
     int n = dimensao;
     
     // TODO: Trabalhar com o i-ésimo elemento da população para evitar re-calcular o custo a cada vez
-
-    float tamanhoAtual = calculaCustoRota(rotaFinal);
 
     for (int i = 0; i < n - 1; i++)
     {
@@ -220,30 +209,64 @@ void doisOpt(int* rotaFinal)
 
             if (delta < 0)
             {
-                atual = clock();
                 trocar_pontas(rotaFinal, i, j);
-                tamanhoAtual += delta;
+                pop->avaliacao[i] += delta;
             }
         }
     }
     
 }
 
-// void salvaResultados(float custoTotal, float tempoGasto)
-// {
-//     FILE* arquivoDeSaida;
+booleano pertence_ao_vetor(int* vetor, int no, int tamanho) {
+    for (int i = 0; i < tamanho; i++) {
+        if (vetor[i] == no) {
+            return True;
+        }
+    }
+    return False;
+}
 
-//     arquivoDeSaida = fopen("resultados-IMD.txt", "a");
+// EXX (Edge Exchange Crossover)
+void exx_crossover(int* pai1, int* pai2, int* filho1, int* filho2, int tamanho) {
+    int pontoInicio = rand() % (tamanho / 2);  // Ponto de início para o segmento de troca (randomizado)
+    int pontoFim = pontoInicio + (rand() % (tamanho / 2)); // Ponto de fim
 
-//     // fprintf(arquivoDeSaida, "++++++++++++++++++  %s  ++++++++++++++++++", nomeInstancia);
+    // Copia o segmento de arestas do primeiro pai para o filho 1
+    for (int i = pontoInicio; i <= pontoFim; i++) {
+        filho1[i] = pai1[i];
+    }
 
-//     fprintf(arquivoDeSaida, "\nTempo computando (em segundos): ");
-//     fprintf(arquivoDeSaida, "%f", tempoGasto);
-//     fprintf(arquivoDeSaida, "\nCusto total: ");
-//     fprintf(arquivoDeSaida, "%f\n", custoTotal);
+    // Copia o segmento de arestas do segundo pai para o filho 2
+    for (int i = pontoInicio; i <= pontoFim; i++) {
+        filho2[i] = pai2[i];
+    }
 
-//     fclose(arquivoDeSaida);
-// }
+    // Preencher os filhos com os vértices restantes do pai 2 para filho 1
+    int index1 = 0;
+    for (int i = 0; i < tamanho; i++) {
+        if (!presente(filho1, pai2[i], pontoInicio)) {
+            while (presente(filho1, pai2[i], pontoInicio)) {
+                i++;
+            }
+            filho1[index1++] = pai2[i];
+        }
+    }
+
+    // Preencher os filhos com os vértices restantes do pai 1 para filho 2
+    int index2 = 0;
+    for (int i = 0; i < tamanho; i++) {
+        if (!presente(filho2, pai1[i], pontoInicio)) {
+            while (presente(filho2, pai1[i], pontoInicio)) {
+                i++;
+            }
+            filho2[index2++] = pai1[i];
+        }
+    }
+
+    // Garantir que o último vértice de cada filho conecte de volta ao primeiro
+    filho1[tamanho - 1] = filho1[0];
+    filho2[tamanho - 1] = filho2[0];
+}
 
 int main(int argc, char *argv[]) {
     srand(time(NULL));
@@ -312,35 +335,34 @@ int main(int argc, char *argv[]) {
 
     printf("\nIniciando construcao inicial");
 
-    int custoMelhorRotaConhecida;
-    int indiceMelhorRotaConhecida;
-
-    // Alocando espaço para a população
-    // int *populacao = malloc(sizeof(int) * tamanhoPopulacao);
-
-    // for (int i = 0; i < tamanhoPopulacao; i++)
-    // {
-    //     populacao[i] = malloc(sizeof(int) * (dimensao + 1));
-    // }
+    int custoMelhorRotaConhecida = INFINITY;
+    int indiceMelhorRotaConhecida = -1;
 
     populacao* pop = gerarPopulacaoInicial(tamanhoPopulacao);
 
-    for (int i = 0; i < tamanhoPopulacao; i++)
+    for (int i = 0; i < pop->tamanho; i++)
     {
-        // Montar populacao inicial
-        // TODO: Buscar maneira de usar threads aqui
+        if (pop->avaliacao[i] < custoMelhorRotaConhecida)
+        {
+            custoMelhorRotaConhecida = pop->avaliacao[i];
+            indiceMelhorRotaConhecida = i;
+        }
     }
 
-    // buscar na populacao a melhor rota e atualizar o custoMelhorRotaConhecida e o seu indice
-    // salvar o valor no timestamp
+    printTimestamp(custoMelhorRotaConhecida);
 
     while (atingiuCriterioParada == False)
     {
-        // avaliarCromossomos();
+        avaliarCromossomos(pop);
         // selecionarCromossomos();
         // cruzarCromossomos();
         // mutarCromossomos();
-        // buscaLocalCromossomos();
+
+        for (int i = 0; i < pop->tamanho; i++)
+        {
+            doisOpt(pop, i);
+        }
+        
         // atualizarPopulacao();
 
         // buscar na populacao a melhor rota
@@ -361,17 +383,18 @@ int main(int argc, char *argv[]) {
     printf("\nFinalizado! Tempo gasto: %lf", cpu_time_used);
     printf("\nRota calculada: %f\n", custoMelhorRotaConhecida);
 
-    exportaResultados(populacao[indiceMelhorRotaConhecida], custoMelhorRotaConhecida, argv[1], cpu_time_used);
+    exportaResultados(pop->cromossomo[indiceMelhorRotaConhecida], custoMelhorRotaConhecida, argv[1], cpu_time_used);
 
     free(listaDeVertices);
 
-    for (int i = 0; i < tamanhoPopulacao; i++)
+    for (int i = 0; i < pop->tamanho; i++)
     {
-        free(populacao[i]);
+        free(pop->cromossomo[i]);
     }
 
-    free(populacao);
-    
+    free(pop->cromossomo);
+    free(pop->avaliacao);
+
     fclose(arquivoEntrada);
     fclose(arquivoTimestamp);
 
