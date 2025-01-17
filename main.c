@@ -287,53 +287,56 @@ void doisOpt(populacao* pop, int i)
     
 }
 
-booleano pertence_ao_vetor(int* vetor, int no, int tamanho) {
-    for (int i = 0; i < tamanho; i++) {
-        if (vetor[i] == no) {
+booleano presente(int* ciclo, int tamanho, int vertice) {
+    for (int i = 0; i < tamanho - 1; i++) {  // Ignorar última posição (ciclo fechado)
+        if (ciclo[i] == vertice) {
             return True;
         }
     }
     return False;
 }
 
-// EXX (Edge Exchange Crossover)
-void exx_crossover(int* pai1, int* pai2, int* filho1, int* filho2, int tamanho) {
-    int pontoInicio = rand() % (tamanho / 2);  // Ponto de início para o segmento de troca (randomizado)
-    int pontoFim = pontoInicio + (rand() % (tamanho / 2)); // Ponto de fim
+void exx_crossover(int* pai1, int* pai2, int* filho1, int* filho2) {
+    // EXX (Edge Exchange Crossover)
 
-    // Copia o segmento de arestas do primeiro pai para o filho 1
-    for (int i = pontoInicio; i <= pontoFim; i++) {
-        filho1[i] = pai1[i];
+    int tamanho = dimensao + 1;
+
+    // Inicializa os filhos com -1 (para identificar posições vazias)
+    for (int i = 0; i < tamanho; i++) {
+        filho1[i] = -1;
+        filho2[i] = -1;
     }
 
-    // Copia o segmento de arestas do segundo pai para o filho 2
+    // Seleciona aleatoriamente dois pontos de corte
+    int pontoInicio = rand() % (tamanho - 2);
+    int pontoFim = pontoInicio + 1 + rand() % (tamanho - pontoInicio - 1);
+
+    // Copia segmento do pai1 para filho1 e do pai2 para filho2
     for (int i = pontoInicio; i <= pontoFim; i++) {
+        filho1[i] = pai1[i];
         filho2[i] = pai2[i];
     }
 
-    // Preencher os filhos com os vértices restantes do pai 2 para filho 1
-    int index1 = 0;
-    for (int i = 0; i < tamanho; i++) {
-        if (!presente(filho1, pai2[i], pontoInicio)) {
-            while (presente(filho1, pai2[i], pontoInicio)) {
-                i++;
+    // Preenche os filhos com os vértices restantes
+    int posicao1 = 0, posicao2 = 0;
+    for (int i = 0; i < tamanho - 1; i++) {  // Ignora última posição do ciclo
+
+        if (!presente(filho1, tamanho, pai2[i])) {
+            while (filho1[posicao1] != -1) {
+                posicao1++;
             }
-            filho1[index1++] = pai2[i];
+            filho1[posicao1] = pai2[i];
+        }
+
+        if (!presente(filho2, tamanho, pai1[i])) {
+            while (filho2[posicao2] != -1) {
+                posicao2++;
+            }
+            filho2[posicao2] = pai1[i];
         }
     }
 
-    // Preencher os filhos com os vértices restantes do pai 1 para filho 2
-    int index2 = 0;
-    for (int i = 0; i < tamanho; i++) {
-        if (!presente(filho2, pai1[i], pontoInicio)) {
-            while (presente(filho2, pai1[i], pontoInicio)) {
-                i++;
-            }
-            filho2[index2++] = pai1[i];
-        }
-    }
-
-    // Garantir que o último vértice de cada filho conecte de volta ao primeiro
+    // Garante que os filhos sejam ciclos fechados
     filho1[tamanho - 1] = filho1[0];
     filho2[tamanho - 1] = filho2[0];
 }
