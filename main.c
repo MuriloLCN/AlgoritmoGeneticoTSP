@@ -21,6 +21,8 @@ typedef struct populacao
     float *avaliacao;
 }populacao;
 
+int numeroDePaisSelecionadosParaCruzamento;
+
 FILE* arquivoTimestamp;
 coordenada* listaDeVertices;
 int dimensao;
@@ -258,13 +260,12 @@ void doisOpt(populacao* pop, int i)
         Baseado em: https://en.wikipedia.org/wiki/2-opt
 
         Parâmetros:
-            *rotaFinal: um vetor com DIMESAO+1 elementos que define a ordem dos vértices a serem visitados
+            pop: A população atual
+            i: O indivíduo o qual se quer aplicar o 2-opt
     */
     int* rotaFinal = pop->cromossomo[i];
     
     int n = dimensao;
-    
-    // TODO: Trabalhar com o i-ésimo elemento da população para evitar re-calcular o custo a cada vez
 
     for (int i = 0; i < n - 1; i++)
     {
@@ -301,23 +302,19 @@ void exx_crossover(int* pai1, int* pai2, int* filho1, int* filho2) {
 
     int tamanho = dimensao + 1;
 
-    // Inicializa os filhos com -1 (para identificar posições vazias)
     for (int i = 0; i < tamanho; i++) {
         filho1[i] = -1;
         filho2[i] = -1;
     }
 
-    // Seleciona aleatoriamente dois pontos de corte
     int pontoInicio = rand() % (tamanho - 2);
     int pontoFim = pontoInicio + 1 + rand() % (tamanho - pontoInicio - 1);
 
-    // Copia segmento do pai1 para filho1 e do pai2 para filho2
     for (int i = pontoInicio; i <= pontoFim; i++) {
         filho1[i] = pai1[i];
         filho2[i] = pai2[i];
     }
 
-    // Preenche os filhos com os vértices restantes
     int posicao1 = 0, posicao2 = 0;
     for (int i = 0; i < tamanho - 1; i++) {  // Ignora última posição do ciclo
 
@@ -339,6 +336,27 @@ void exx_crossover(int* pai1, int* pai2, int* filho1, int* filho2) {
     // Garante que os filhos sejam ciclos fechados
     filho1[tamanho - 1] = filho1[0];
     filho2[tamanho - 1] = filho2[0];
+}
+
+void selecionarCromossomos(populacao* pop, int* individuosSelecionados)
+{
+    /*
+        Realiza uma seleção com base em torneio para a população
+
+        Guarda os índices dos índivíduos escolhidos para cruzamento em um vetor de tamanho 'numeroDePaisSelecionadosParaCruzamento'
+    */
+
+    /* Realizar torneio aqui */
+    
+}
+
+void mutarCromossomo(populacao* pop, int i)
+{
+    /*
+        Sorteia uma possível mutação no i-ésimo indivíduo da população
+    */
+
+    
 }
 
 int main(int argc, char *argv[]) {
@@ -378,6 +396,26 @@ int main(int argc, char *argv[]) {
     float chanceMutacao = atof(argv[4]);
     int numeroGeracoesSemMelhoriaParaParar = atoi(argv[5]);
 
+    if (tamanhoPopulacao <= 1)
+    {
+        printf("\nO sistema precisa de pelo menos dois indivíduos para funcionar");
+        return 1;
+    }
+
+    numeroDePaisSelecionadosParaCruzamento = (int) (0.15 * tamanhoPopulacao);
+
+    // Precisamos de pares. Aqui foi utilizado uma monogamia intrageracional.
+    // Caso um pai fique sem par, ele não poderia cruzar, então precisamos garantir que um número par deles sejam selecionados.
+    if (numeroDePaisSelecionadosParaCruzamento % 2 != 0)
+    {
+        numeroDePaisSelecionadosParaCruzamento += 1;
+    }
+
+    if (numeroDePaisSelecionadosParaCruzamento <= 1)
+    {
+        numeroDePaisSelecionadosParaCruzamento = 2;
+    }
+
     if (algoritmoCruzamento != 0 && algoritmoCruzamento != 1)
     {
         printf("\nErro: O operador de cruzamento deve ser 0 ou 1");
@@ -411,7 +449,13 @@ int main(int argc, char *argv[]) {
     int custoMelhorRotaConhecida = INFINITY;
     int indiceMelhorRotaConhecida = -1;
 
+    // Populacao atual
     populacao* pop = gerarPopulacaoInicial(tamanhoPopulacao);
+
+    populacao* novosIndividuos;
+    novosIndividuos->tamanho = numeroDePaisSelecionadosParaCruzamento / 2;
+
+    int* paisSelecionados = malloc(sizeof(int) * numeroDePaisSelecionadosParaCruzamento);
 
     for (int i = 0; i < pop->tamanho; i++)
     {
@@ -427,8 +471,11 @@ int main(int argc, char *argv[]) {
     while (atingiuCriterioParada == False)
     {
         avaliarCromossomos(pop);
-        // selecionarCromossomos();
+
+        selecionarCromossomos(pop, paisSelecionados);
+
         // cruzarCromossomos();
+
         // mutarCromossomos();
 
         for (int i = 0; i < pop->tamanho; i++)
