@@ -22,10 +22,12 @@ typedef struct populacao
 }populacao;
 
 int numeroDePaisSelecionadosParaCruzamento;
+float chanceMutacao;
 
 FILE* arquivoTimestamp;
 coordenada* listaDeVertices;
 int dimensao;
+int algoritmoCruzamento;
 clock_t inicioMelhoramento;
 
 void vizinhoMaisProximo(int* rotaFinal);
@@ -435,45 +437,34 @@ booleano presente(int* ciclo, int tamanho, int vertice) {
     return False;
 }
 
-void exx_crossover(int* pai1, int* pai2, int* filho1, int* filho2) {
+void exx_crossover(int* pai1, int* pai2, int* filho) {
     // EXX (Edge Exchange Crossover)
 
     int tamanho = dimensao + 1;
 
     for (int i = 0; i < tamanho; i++) {
-        filho1[i] = -1;
-        filho2[i] = -1;
+        filho[i] = -1;
     }
 
     int pontoInicio = rand() % (tamanho - 2);
     int pontoFim = pontoInicio + 1 + rand() % (tamanho - pontoInicio - 1);
 
     for (int i = pontoInicio; i <= pontoFim; i++) {
-        filho1[i] = pai1[i];
-        filho2[i] = pai2[i];
+        filho[i] = pai1[i];
     }
 
     int posicao1 = 0, posicao2 = 0;
     for (int i = 0; i < tamanho - 1; i++) {  // Ignora última posição do ciclo
 
-        if (!presente(filho1, tamanho, pai2[i])) {
-            while (filho1[posicao1] != -1) {
+        if (!presente(filho, tamanho, pai2[i])) {
+            while (filho[posicao1] != -1) {
                 posicao1++;
             }
-            filho1[posicao1] = pai2[i];
-        }
-
-        if (!presente(filho2, tamanho, pai1[i])) {
-            while (filho2[posicao2] != -1) {
-                posicao2++;
-            }
-            filho2[posicao2] = pai1[i];
+            filho[posicao1] = pai2[i];
         }
     }
 
-    // Garante que os filhos sejam ciclos fechados
-    filho1[tamanho - 1] = filho1[0];
-    filho2[tamanho - 1] = filho2[0];
+    filho[tamanho - 1] = filho[0];
 }
 
 void selecionarCromossomos(populacao* pop, int* individuosSelecionados)
@@ -494,7 +485,66 @@ void mutarCromossomo(populacao* pop, int i)
         Sorteia uma possível mutação no i-ésimo indivíduo da população
     */
 
+    float num_aleatorio = (float) rand() / RAND_MAX;
+
+    if (num_aleatorio < chanceMutacao)
+    {
+        int v1 = (int) rand() % dimensao;
+        int v2 = (int) rand() % dimensao;
+
+        troca(pop->cromossomo[i], v1, v2);
+    }
+}
+
+float* probabilidades;
+
+void selecionarCromossomos(populacao* pop, int* paisSelecionados) {
+    float totalFitness = 0.0;
+    float* probabilidades;
+
+    for (int i = 0; i < pop->tamanho; i++) {
+        probabilidades[i] = 1.0 / pop->avaliacao[i];
+        totalFitness += probabilidades[i];
+    }
+
+    for (int i = 0; i < pop->tamanho; i++) {
+        probabilidades[i] /= totalFitness;
+    }
+
+    for (int i = 0; i < numeroDePaisSelecionadosParaCruzamento; i++) {
+        float sorteio = (float)rand() / RAND_MAX;
+        float acumulado = 0.0;
+
+        for (int j = 0; j < pop->tamanho; j++) {
+            acumulado += probabilidades[j];
+            if (sorteio <= acumulado) {
+                paisSelecionados[i] = j;
+                break;
+            }
+        }
+    }
+}
+
+void cruzarCromossomos(populacao* pop, int* paisSelecionados, populacao* filhosGerados)
+{
+    /*
+        Cruza os pais selecionados da população para gerar numeroDePaisSelecionadosParaCruzamento/2 filhos.
+    */
     
+    for (int i = 0; i < numeroDePaisSelecionadosParaCruzamento / 2; i++)
+    {
+        int indicePai1 = paisSelecionados[2 * i];
+        int indicePai2 = paisSelecionados[(2 * i) + 1];
+
+        if (algoritmoCruzamento == 0)
+        {
+            filhosGerados->cromossomo[i] = zx(pop->cromossomo[indicePai1], pop->cromossomo[indicePai2]);
+        }
+        else
+        {   
+            exx_crossover(pop->cromossomo[indicePai1], pop->cromossomo[indicePai2], filhosGerados->cromossomo[i]);
+        }
+    }
 }
 
 int main(int argc, char *argv[]) {
@@ -511,7 +561,7 @@ int main(int argc, char *argv[]) {
 
         Onde:
         [instancia]: O caminho da instância a ser executada
-        [operador_cruzamento]: 0 para [operador 1] e 1 para [operador 2]
+        [operador_cruzamento]: 0 para ZX e 1 para EXX
         [tamanho_populacao]: Um valor inteiro positivo para o tamanho da população (>= 0)
         [chance_mutacao]: Um valor entre 0-1 que indica a chance de alguma mutação ocorrer em um indivíduo
         [criterio_parada]: O número de gerações sem melhoria para parar o algoritmo 
@@ -529,9 +579,9 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    int algoritmoCruzamento = atoi(argv[2]);
+    algoritmoCruzamento = atoi(argv[2]);
     int tamanhoPopulacao = atoi(argv[3]);
-    float chanceMutacao = atof(argv[4]);
+    chanceMutacao = atof(argv[4]);
     int numeroGeracoesSemMelhoriaParaParar = atoi(argv[5]);
 
     if (tamanhoPopulacao <= 1)
@@ -590,10 +640,20 @@ int main(int argc, char *argv[]) {
     // Populacao atual
     populacao* pop = gerarPopulacaoInicial(tamanhoPopulacao);
 
-    populacao* novosIndividuos;
+    // População de filhos gerados a cada iteração
+    populacao* novosIndividuos = malloc(sizeof(populacao));
     novosIndividuos->tamanho = numeroDePaisSelecionadosParaCruzamento / 2;
+    novosIndividuos->avaliacao = malloc(sizeof(float) * novosIndividuos->tamanho);
+    novosIndividuos->cromossomo = malloc(sizeof(int*) * novosIndividuos->tamanho);
+    
+    for (int i = 0; i < novosIndividuos->tamanho; i++)
+    {
+        novosIndividuos->avaliacao[i] = 0.0;
+        novosIndividuos->cromossomo[i] = malloc(sizeof(int) * (dimensao + 1));
+    }
 
     int* paisSelecionados = malloc(sizeof(int) * numeroDePaisSelecionadosParaCruzamento);
+    probabilidades = malloc(sizeof(float) * tamanhoPopulacao);
 
     for (int i = 0; i < pop->tamanho; i++)
     {
@@ -612,12 +672,12 @@ int main(int argc, char *argv[]) {
 
         selecionarCromossomos(pop, paisSelecionados);
 
-        // cruzarCromossomos();
-
-        // mutarCromossomos();
+        cruzarCromossomos(pop, paisSelecionados, novosIndividuos);
 
         for (int i = 0; i < pop->tamanho; i++)
         {
+            // TODO: Otimizar o cálculo do custo já aqui, para evitar mais uma ronda de calcular custos
+            mutarCromossomo(pop, i);
             doisOpt(pop, i);
         }
         
@@ -652,6 +712,8 @@ int main(int argc, char *argv[]) {
 
     free(pop->cromossomo);
     free(pop->avaliacao);
+
+    free(probabilidades);
 
     fclose(arquivoEntrada);
     fclose(arquivoTimestamp);
