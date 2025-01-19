@@ -95,7 +95,7 @@ void calcula_variacao_coordenadas (float* dx, float* dy)
 
     for (int i = 0; i < dimensao; i++)
     {
-        if ((&listaDeVertices[i])->x < min_y)
+        if ((&listaDeVertices[i])->y < min_y)
             min_y = (&listaDeVertices[i])->y;
     }
 
@@ -103,7 +103,7 @@ void calcula_variacao_coordenadas (float* dx, float* dy)
     *dy = max_y - min_y;
 }
 
-void gerar_conjunto_pertencente_regiao (float alpha, int* rotaFinal, int* vet)
+void gerar_conjunto_pertencente_regiao (float alpha, int* rotaFinal, int* vet, coordenada cidade_inicial)
 {
     // calcula Xw e Yw
     float x_largura, y_altura;
@@ -111,24 +111,162 @@ void gerar_conjunto_pertencente_regiao (float alpha, int* rotaFinal, int* vet)
     // calula Lx e Ly
     float lx = x_largura * alpha;
     float ly = y_altura * alpha;
+    
+    // pra cada cidade da rota final, veficiar se pertence a regiao e atualizar o vet
+    int num_cidades = 0;
+    for (int i = 0; i < dimensao; i++)
+    {
+        if (pertence_regiao(lx, ly, cidade_inicial, listaDeVertices[rotaFinal[i]]))
+        {
+            vet[i] = 1;
+            num_cidades++;
+        }
+    }
+}
+
+float menor_distancia(int* bin_genitor, int indice_cidade, int* indice_genitor, int bin)
+{
+    int indice_cidade_mais_proxima, i = 0, n_bin, elementos_percorridos = 0;
+    float menor_distancia = INFINITY, temp_distancia;
+
+    // n_bin eh negacao de bin
+    if (bin == 0) {n_bin = 1;}
+    else {n_bin = 0;}  
+
+    // encontra o primeiro conjunto de bin's do INICIO
+    while ((bin_genitor[i % dimensao] == bin) && (elementos_percorridos <= dimensao)) 
+    {
+        elementos_percorridos++;
+        i++;
+    }
+    // tem que começar em uma posição com valor 0, caso contrário complica para detectar o componente conexo
+    while ((bin_genitor[i % dimensao] == n_bin) && (elementos_percorridos <= dimensao)) 
+    {
+        elementos_percorridos++;
+        i++;
+    }
+    
+    // evita loop infinito
+    if (elementos_percorridos > dimensao)
+    {
+        *indice_genitor = -1;
+        return INFINITY;
+    }
+
+    else 
+        elementos_percorridos = 0;
+
+    while (elementos_percorridos < dimensao)
+    {
+        // achou um componente conexo
+        if (bin_genitor[i % dimensao] == bin) 
+        {
+            temp_distancia = calculaDistancia(&listaDeVertices[i % dimensao], &listaDeVertices[indice_cidade % dimensao]);
+            if (temp_distancia < menor_distancia)
+            {
+                menor_distancia = temp_distancia;
+                indice_cidade_mais_proxima = i % dimensao;
+            }
+
+            while ((bin_genitor[i % dimensao] == bin) && (elementos_percorridos < dimensao))
+            {
+                i++;
+                elementos_percorridos++;
+            } 
+        }
+
+        // se não for o que estou procurando, pula
+        i++;
+        elementos_percorridos++;
+    }
+    
+    *indice_genitor = indice_cidade_mais_proxima;
+
+    return menor_distancia;
+}
+
+int* zx (int* genitor1, int* genitor2)
+{
+    int bin_genitor1[dimensao+1];
+    int bin_genitor2[dimensao+1];
+    int* filho = malloc(sizeof(int) * (dimensao+1));
+
+    for (int i = 0; i <= dimensao; i++)
+    {
+        bin_genitor1[i] = 0;
+        bin_genitor2[i] = 0;
+        filho[i] = -1;
+    }
 
     // sorteia a cidade
     int ind_cidade_inicial = rand() % dimensao;
     coordenada cidade_inicial = listaDeVertices[ind_cidade_inicial];
 
-    // aloca dinamicamente vet
-    vet = malloc(sizeof(int) * (dimensao+1));
-    for (int i = 0; i <= dimensao; i++)
-    {
-        vet[i] = 0;
-    }
+    gerar_conjunto_pertencente_regiao(0.3, genitor1, bin_genitor1, cidade_inicial);
+    gerar_conjunto_pertencente_regiao(0.3, genitor2, bin_genitor2, cidade_inicial);
 
-    // pra cada cidade da rota final, veficiar se pertence a regiao e atualizar o vet
-    for (int i = 0; i <= dimensao; i++)
+    float distancia_genitor1, distancia_genitor2;
+    int indice_filho = 0, indice_genitor1 = 0, indice_genitor2 = 0, cidades_inseridas = 0;
+    
+    // encontra o primeiro conjunto de 0's do INICIO
+    while (bin_genitor2[indice_genitor2 % dimensao] == 0) {indice_genitor2++;}
+    while (bin_genitor2[indice_genitor2 % dimensao] == 1) {indice_genitor2++;}
+    while (bin_genitor2[indice_genitor2 % dimensao] == 0)
     {
-        if (pertence_regiao(lx, ly, cidade_inicial, listaDeVertices[rotaFinal[i]]))
+        filho[indice_filho % dimensao] = genitor2[indice_genitor2 % dimensao];
+        bin_genitor2[indice_genitor2 % dimensao] = 1;
+        indice_filho++;
+        indice_genitor2++;
+        cidades_inseridas++;
+    }
+    
+    while (indice_filho < dimensao)
+    {
+        // se tivermos uma desconexão, procura nos dois genitores qual componente conexo conectar
+        distancia_genitor1 = menor_distancia(bin_genitor1, filho[(indice_filho-1)], &indice_genitor1, 1);
+        distancia_genitor2 = menor_distancia(bin_genitor2, filho[(indice_filho-1)], &indice_genitor2, 0);
+
+        if ((distancia_genitor1 == INFINITY) && (distancia_genitor2 == INFINITY))
         {
-            vet[rotaFinal[i]] = 1;
+            // printf("deu pau\n");
+            break;
+        }
+
+        // próximo componente a ser conectado fica no genior 1
+        if (distancia_genitor1 <= distancia_genitor2)
+        {
+            while((bin_genitor1[(indice_genitor1 + dimensao) % dimensao]) == 1 && (indice_filho < dimensao))
+            {
+                filho[indice_filho] = genitor1[(indice_genitor1 + dimensao) % dimensao];
+                bin_genitor1[(indice_genitor1 + dimensao) % dimensao] = 0; // marcando que já foi selecionado e desconsiderando para as próximas procuras
+                indice_filho++;
+                indice_genitor1++;
+                cidades_inseridas ++;
+            }
+        }
+
+        else if (distancia_genitor1 > distancia_genitor2)
+        {
+            while((bin_genitor2[(indice_genitor2 + dimensao) % dimensao] == 0) && (indice_filho < dimensao))
+            {
+                filho[indice_filho] = genitor2[(indice_genitor2 + dimensao) % dimensao];
+                bin_genitor2[(indice_genitor2 + dimensao) % dimensao] = 1; // marcando que já foi selecionado e desconsiderando para as próximas procuras
+                indice_filho++;
+                indice_genitor2++;
+                cidades_inseridas++;
+            }
+        }       
+    }
+    return filho;
+        
+}
+
+void ha_repetidos(int vetor[]) {
+    for (int i = 0; i < dimensao; i++) {
+        for (int j = i + 1; j < dimensao; j++) {
+            if (vetor[i] == vetor[j]) {
+                printf("Repetido: %d %d\n", vetor[i], vetor[j]);
+            }
         }
     }
 }
