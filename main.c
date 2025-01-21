@@ -547,6 +547,55 @@ void cruzarCromossomos(populacao* pop, int* paisSelecionados, populacao* filhosG
     }
 }
 
+void atualizarPopulacao(populacao* populacaoAtual, populacao* novosIndividuos)
+{
+    // Considerando que as duas populações estão ordenadas pela aptidão, utiliza a técnica do Stead Stated em lote
+
+    populacao* buffer_populacao = malloc(sizeof(populacao));
+    buffer_populacao->tamanho = populacaoAtual->tamanho;
+    buffer_populacao->avaliacao = malloc(sizeof(float) * populacaoAtual->tamanho);
+    buffer_populacao->cromossomo = malloc(sizeof(int*) * populacaoAtual->tamanho);
+
+    int indice_pop_atual = 0;
+    int indice_pop_nova = 0;
+    for (int i = 0; i < populacaoAtual->tamanho; i++)
+    {
+        if (populacaoAtual->avaliacao[indice_pop_atual] < novosIndividuos->avaliacao[indice_pop_nova])
+        {
+            buffer_populacao->avaliacao[i] = populacaoAtual->avaliacao[indice_pop_atual];
+            buffer_populacao->cromossomo[i] = populacaoAtual->cromossomo[indice_pop_atual];
+            indice_pop_atual++;
+        }
+
+        else
+        {
+            buffer_populacao->avaliacao[i] = novosIndividuos->avaliacao[indice_pop_nova];
+            buffer_populacao->cromossomo[i] = novosIndividuos->cromossomo[indice_pop_nova];
+            indice_pop_nova++;
+        }
+    }
+
+    // Limpando os ponteiros dos cromossomos descartados
+
+    for (int i = indice_pop_atual; i < populacaoAtual->tamanho; i++)
+    {
+        free(populacaoAtual->cromossomo[i]);
+    }
+
+    for (int i = indice_pop_nova; i < novosIndividuos->tamanho; i++)
+    {
+        free(novosIndividuos->cromossomo[i]);
+    }
+
+    // Copiando para a população atual novamente
+
+    for (int i = 0; i < populacaoAtual->tamanho; i++)
+    {
+        populacaoAtual->cromossomo[i] = buffer_populacao->cromossomo[i];
+        populacaoAtual->avaliacao[i] = buffer_populacao->avaliacao[i];
+    }
+}
+
 int main(int argc, char *argv[]) {
     srand(time(NULL));
 
