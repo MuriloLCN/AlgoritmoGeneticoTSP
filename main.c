@@ -619,22 +619,16 @@ void atualizarPopulacao(populacao* populacaoAtual, populacao* novosIndividuos)
     
         else if (indice_pop_atual < populacaoAtual->tamanho)
         {
-            while (indice_pop_atual < populacaoAtual->tamanho)
-            {
-                buffer_populacao->avaliacao[i] = populacaoAtual->avaliacao[indice_pop_atual];
-                buffer_populacao->cromossomo[i] = populacaoAtual->cromossomo[indice_pop_atual];
-                indice_pop_atual++;
-            }
+            buffer_populacao->avaliacao[i] = populacaoAtual->avaliacao[indice_pop_atual];
+            buffer_populacao->cromossomo[i] = populacaoAtual->cromossomo[indice_pop_atual];
+            indice_pop_atual++;
         }
 
         else if (indice_pop_nova < novosIndividuos->tamanho)
         {
-            while (indice_pop_nova < novosIndividuos->tamanho)
-            {
-                buffer_populacao->avaliacao[i] = novosIndividuos->avaliacao[indice_pop_nova];
-                buffer_populacao->cromossomo[i] = novosIndividuos->cromossomo[indice_pop_nova];
-                indice_pop_nova++;
-            }
+            buffer_populacao->avaliacao[i] = novosIndividuos->avaliacao[indice_pop_nova];
+            buffer_populacao->cromossomo[i] = novosIndividuos->cromossomo[indice_pop_nova];
+            indice_pop_nova++;
         }
     }
 
