@@ -479,18 +479,6 @@ void exx_crossover(int* pai1, int* pai2, int* filho) {
     filho[tamanho - 1] = filho[0];
 }
 
-void selecionarCromossomos(populacao* pop, int* individuosSelecionados)
-{
-    /*
-        Realiza uma seleção com base em torneio para a população
-
-        Guarda os índices dos índivíduos escolhidos para cruzamento em um vetor de tamanho 'numeroDePaisSelecionadosParaCruzamento'
-    */
-
-    /* Realizar torneio aqui */
-    
-}
-
 void mutarCromossomo(populacao* pop, int i)
 {
     /*
@@ -612,18 +600,41 @@ void atualizarPopulacao(populacao* populacaoAtual, populacao* novosIndividuos)
     int indice_pop_nova = 0;
     for (int i = 0; i < populacaoAtual->tamanho; i++)
     {
-        if (populacaoAtual->avaliacao[indice_pop_atual] < novosIndividuos->avaliacao[indice_pop_nova])
+        if ((indice_pop_atual < populacaoAtual->tamanho) && (indice_pop_nova < novosIndividuos->tamanho))
         {
-            buffer_populacao->avaliacao[i] = populacaoAtual->avaliacao[indice_pop_atual];
-            buffer_populacao->cromossomo[i] = populacaoAtual->cromossomo[indice_pop_atual];
-            indice_pop_atual++;
+            if (populacaoAtual->avaliacao[indice_pop_atual] < novosIndividuos->avaliacao[indice_pop_nova])
+            {
+                buffer_populacao->avaliacao[i] = populacaoAtual->avaliacao[indice_pop_atual];
+                buffer_populacao->cromossomo[i] = populacaoAtual->cromossomo[indice_pop_atual];
+                indice_pop_atual++;
+            }
+
+            else
+            {
+                buffer_populacao->avaliacao[i] = novosIndividuos->avaliacao[indice_pop_nova];
+                buffer_populacao->cromossomo[i] = novosIndividuos->cromossomo[indice_pop_nova];
+                indice_pop_nova++;
+            }
+        }
+    
+        else if (indice_pop_atual < populacaoAtual->tamanho)
+        {
+            while (indice_pop_atual < populacaoAtual->tamanho)
+            {
+                buffer_populacao->avaliacao[i] = populacaoAtual->avaliacao[indice_pop_atual];
+                buffer_populacao->cromossomo[i] = populacaoAtual->cromossomo[indice_pop_atual];
+                indice_pop_atual++;
+            }
         }
 
-        else
+        else if (indice_pop_nova < novosIndividuos->tamanho)
         {
-            buffer_populacao->avaliacao[i] = novosIndividuos->avaliacao[indice_pop_nova];
-            buffer_populacao->cromossomo[i] = novosIndividuos->cromossomo[indice_pop_nova];
-            indice_pop_nova++;
+            while (indice_pop_nova < novosIndividuos->tamanho)
+            {
+                buffer_populacao->avaliacao[i] = novosIndividuos->avaliacao[indice_pop_nova];
+                buffer_populacao->cromossomo[i] = novosIndividuos->cromossomo[indice_pop_nova];
+                indice_pop_nova++;
+            }
         }
     }
 
