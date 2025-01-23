@@ -61,6 +61,22 @@ populacao* gerarPopulacaoInicial(int tamanho)
     return nova_populacao;
 }
 
+void ordenaPopulacao(populacao *pop) {
+    for (int i = 0; i < pop->tamanho - 1; i++) {
+        for (int j = 0; j < pop->tamanho - i - 1; j++) {
+            if (pop->avaliacao[j] > pop->avaliacao[j + 1]) {
+                float tempAvaliacao = pop->avaliacao[j];
+                pop->avaliacao[j] = pop->avaliacao[j + 1];
+                pop->avaliacao[j + 1] = tempAvaliacao;
+
+                int *tempCromossomo = pop->cromossomo[j];
+                pop->cromossomo[j] = pop->cromossomo[j + 1];
+                pop->cromossomo[j + 1] = tempCromossomo;
+            }
+        }
+    }
+}
+
 void avaliarCromossomos (populacao* populacao_atual)
 {
     for (int i = 0; i < populacao_atual->tamanho; i++)
@@ -779,6 +795,8 @@ int main(int argc, char *argv[]) {
     novosIndividuos->tamanho = numeroDePaisSelecionadosParaCruzamento / 2;
     novosIndividuos->avaliacao = malloc(sizeof(float) * novosIndividuos->tamanho);
     novosIndividuos->cromossomo = malloc(sizeof(int*) * novosIndividuos->tamanho);
+
+    printf("\nnovosIndividuos->tamanho: %d\n", novosIndividuos->tamanho);
     
     for (int i = 0; i < novosIndividuos->tamanho; i++)
     {
@@ -837,16 +855,32 @@ int main(int argc, char *argv[]) {
         }
 
         printf("\nMutou e fez 2opt com os cromossomos");
+        avaliarCromossomos(novosIndividuos);
         
         atingiuCriterioParada = True;
+        ordenaPopulacao(pop);
+        ordenaPopulacao(novosIndividuos);
 
+        printf("\nPOP:");
+        for (int i = 0; i < pop->tamanho; i++)
+        {
+            printf("\nAvaliacao de pop[%d]: %f", i, pop->avaliacao[i]);
+        }
+
+        printf("\nFILHOS:");
+        for (int i = 0; i < novosIndividuos->tamanho; i++)
+        {
+            printf("\nAvaliacao de novosIndividuos[%d]: %f", i, novosIndividuos->avaliacao[i]);
+        }
+
+        printf("\n\nCRUZANDO ...\n");
         atualizarPopulacao(pop, novosIndividuos);
 
         for (int i = 0; i < pop->tamanho; i++)
         {
+            printf("\nAvaliacao de pop[%d]: %f", i, pop->avaliacao[i]);
             if (pop->avaliacao[i] < custoMelhorRotaConhecida)
             {
-                // printf("\nAvaliacao de pop[%d]: %f", i, pop->avaliacao[i]);
                 custoMelhorRotaConhecida = pop->avaliacao[i];
                 indiceMelhorRotaConhecida = i;
             }
