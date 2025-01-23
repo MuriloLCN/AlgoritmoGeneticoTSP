@@ -735,7 +735,12 @@ int main(int argc, char *argv[]) {
     }
     
     FILE *arquivoEntrada = fopen(argv[1], "r");
-    FILE *arquivoTimestamp = fopen("timestamp.txt", "w+");
+    arquivoTimestamp = fopen("timestamp.txt", "w+");
+
+    if (arquivoTimestamp == NULL) {
+        printf("\nErro ao criar arquivo timestamp.txt\n");
+        return 1;
+    }
 
     if (arquivoEntrada == NULL) {
         printf("\nErro ao abrir arquivo de entrada");
@@ -798,10 +803,11 @@ int main(int argc, char *argv[]) {
 
     printf("\nMemoria alocada!");
 
+    inicioMelhoramento = clock();
     printTimestamp(custoMelhorRotaConhecida);
 
     printf("\nEntrando no laco");
-
+    
     while (atingiuCriterioParada == False)
     {
         avaliarCromossomos(pop);
@@ -845,7 +851,7 @@ int main(int argc, char *argv[]) {
 
         // se o contador for igual a zero, atingiuCriterioDeParada = True
         
-        printTimestamp(custoMelhorRotaConhecida);
+        // printTimestamp(custoMelhorRotaConhecida);
 
     }
 
