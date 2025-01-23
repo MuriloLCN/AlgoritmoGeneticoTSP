@@ -263,8 +263,9 @@ int* zx (int* genitor1, int* genitor2)
             }
         }       
     }
-    return filho;
-        
+    filho[dimensao] = filho[0];
+
+    return filho;       
 }
 
 void ha_repetidos(int vetor[]) {
@@ -839,8 +840,17 @@ int main(int argc, char *argv[]) {
         
         atingiuCriterioParada = True;
 
-        // atualizarPopulacao();
+        atualizarPopulacao(pop, novosIndividuos);
 
+        for (int i = 0; i < pop->tamanho; i++)
+        {
+            if (pop->avaliacao[i] < custoMelhorRotaConhecida)
+            {
+                // printf("\nAvaliacao de pop[%d]: %f", i, pop->avaliacao[i]);
+                custoMelhorRotaConhecida = pop->avaliacao[i];
+                indiceMelhorRotaConhecida = i;
+            }
+        }
         // buscar na populacao a melhor rota
 
         // se ela for melhor que a melhorRotaConhecida, atualizar ela e o seu indice
@@ -851,7 +861,7 @@ int main(int argc, char *argv[]) {
 
         // se o contador for igual a zero, atingiuCriterioDeParada = True
         
-        // printTimestamp(custoMelhorRotaConhecida);
+        printTimestamp(custoMelhorRotaConhecida);
 
     }
 
