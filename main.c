@@ -30,6 +30,7 @@ coordenada* listaDeVertices;
 int dimensao;
 int algoritmoCruzamento;
 clock_t inicioMelhoramento;
+float alpha;
 
 void vizinhoMaisProximo(int* rotaFinal, float* custo);
 float calculaCustoRota(int* rota);
@@ -235,8 +236,8 @@ int* zx (int* genitor1, int* genitor2, int* filho)
     int ind_cidade_inicial = randMelhorado() % dimensao;
     coordenada cidade_inicial = listaDeVertices[ind_cidade_inicial];
 
-    gerar_conjunto_pertencente_regiao(0.3, genitor1, bin_genitor1, cidade_inicial);
-    gerar_conjunto_pertencente_regiao(0.3, genitor2, bin_genitor2, cidade_inicial);
+    gerar_conjunto_pertencente_regiao(alpha, genitor1, bin_genitor1, cidade_inicial);
+    gerar_conjunto_pertencente_regiao(alpha, genitor2, bin_genitor2, cidade_inicial);
 
     float distancia_genitor1, distancia_genitor2;
     int indice_filho = 0, indice_genitor1 = 0, indice_genitor2 = 0, cidades_inseridas = 0;
@@ -794,7 +795,7 @@ int main(int argc, char *argv[]) {
         [criterio_parada]: O número de gerações sem melhoria para parar o algoritmo 
     */  
     
-    if (argc != 6) {
+    if (argc > 7) {
         printf("\nArgumentos incorretos, uso correto: \n[programa] arquivo_de_entrada.tsp [operador_cruzamento] [tamanho_populacao] [chance_mutacao] [criterio_parada]");
         printf("\n\nArgumentos:\n -- [programa]: O executavel compilado\n -- arquivo_de_entrada.tsp: O arquivo contendo a instancia a ser executada");
         printf("\n -- [operador_cruzamento]: Indica qual heuristica sera utilizada:");
@@ -853,6 +854,11 @@ int main(int argc, char *argv[]) {
     if (!terminaCom(argv[1], ".tsp")) {
         printf("\nArquivo de entrada deve ser do tipo .tsp");
         return 1;
+    }
+
+    if (algoritmoCruzamento == 1)
+    {
+        alpha = atof(argv[6]);
     }
 
     lerArquivo(arquivoEntrada, &listaDeVertices, &dimensao);
