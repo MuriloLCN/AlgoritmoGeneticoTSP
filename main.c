@@ -28,8 +28,10 @@ float chanceMutacao;
 FILE* arquivoTimestamp;
 coordenada* listaDeVertices;
 int dimensao;
+int limiteExecucaoHoras = 6;
 int algoritmoCruzamento;
 clock_t inicioMelhoramento;
+clock_t inicioExecucao;
 float alpha;
 
 void vizinhoMaisProximo(int* rotaFinal, float* custo);
@@ -795,6 +797,7 @@ int main(int argc, char *argv[]) {
     lerArquivo(arquivoEntrada, &listaDeVertices, &dimensao);
 
     clock_t start, end;
+    inicioExecucao = clock();
     start = clock();
 
     booleano atingiuCriterioParada = False;
@@ -946,6 +949,11 @@ int main(int argc, char *argv[]) {
         printTimestampIteracao(custoMelhorRotaConhecida, numeroDeGeracoes, custoMedio);
          
         if (contadorGeracoesSemMelhoria == 0)
+        {
+            atingiuCriterioParada = True;
+        }
+
+        if (((double)(clock() - inicioExecucao)/CLOCKS_PER_SEC) / 3600 > limiteExecucaoHoras)
         {
             atingiuCriterioParada = True;
         }
