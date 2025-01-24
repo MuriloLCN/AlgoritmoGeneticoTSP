@@ -313,9 +313,9 @@ void printTimestamp(float custo)
     fprintf(arquivoTimestamp, "%f %f \n", ((float) (clock() - inicioMelhoramento)) / CLOCKS_PER_SEC, custo);
 }
 
-void printTimestampIteracao(float custo, int iter, float custoMedio)
+void printTimestampIteracao(float custo, int iter, float custoMedio, float custoPiorPop, float custoMelhorPop)
 {
-    fprintf(arquivoTimestamp, "%d %f %f %f\n", iter, ((float) (clock() - inicioMelhoramento)) / CLOCKS_PER_SEC, custo, custoMedio);
+    fprintf(arquivoTimestamp, "%d %f %f %f %f %f\n", iter, ((float) (clock() - inicioMelhoramento)) / CLOCKS_PER_SEC, custo, custoMedio, custoPiorPop, custoMelhorPop);
 }
 
 float calculaDistancia(coordenada* c1, coordenada* c2)
@@ -698,12 +698,25 @@ void copiarRota(int* fonte, int* destino)
     }
 }
 
-void calculaCustoMedioPopulacao(populacao* pop, float* media)
+void calculaCustoMedioPopulacao(populacao* pop, float* media, float* custoPiorIndividuo, float* custoMelhorIndividuo)
 {
+    *custoMelhorIndividuo = INFINITY;
+    *custoPiorIndividuo = 0;
+
     float soma = 0;
     for (int i = 0; i < pop->tamanho; i++)
     {
         soma += pop->avaliacao[i];
+
+        if (pop->avaliacao[i] < *custoMelhorIndividuo)
+        {
+            *custoMelhorIndividuo = pop->avaliacao[i];
+        }
+
+        if (pop->avaliacao[i] > *custoPiorIndividuo)
+        {
+            *custoPiorIndividuo = pop->avaliacao[i];
+        }
     }
     *media = (soma / pop->tamanho);
 }
@@ -811,6 +824,8 @@ int main(int argc, char *argv[]) {
     int* melhorRotaConhecida = malloc(sizeof(int) * (dimensao + 1));
 
     float custoMedio;
+    float custoPiorIndividuo;
+    float custoMelhorIndividuo; // difere da melhorRotaConhecida pq esse deve obrigatoriamente ser da população atual
 
     // Populacao atual
     populacao* pop = gerarPopulacaoInicial(tamanhoPopulacao);
@@ -856,9 +871,9 @@ int main(int argc, char *argv[]) {
     inicioMelhoramento = clock();
     // printTimestamp(custoMelhorRotaConhecida);
 
-    calculaCustoMedioPopulacao(pop, &custoMedio);
+    calculaCustoMedioPopulacao(pop, &custoMedio, &custoPiorIndividuo, &custoMelhorIndividuo);
 
-    printTimestampIteracao(custoMelhorRotaConhecida, 0, custoMedio);
+    printTimestampIteracao(custoMelhorRotaConhecida, 0, custoMedio, custoPiorIndividuo, custoMelhorIndividuo);
 
     printf("\nEntrando no laco");
     
@@ -946,7 +961,7 @@ int main(int argc, char *argv[]) {
             contadorGeracoesSemMelhoria -= 1;
         }
 
-        printTimestampIteracao(custoMelhorRotaConhecida, numeroDeGeracoes, custoMedio);
+        printTimestampIteracao(custoMelhorRotaConhecida, numeroDeGeracoes, custoMedio, custoPiorIndividuo, custoMelhorIndividuo);
          
         if (contadorGeracoesSemMelhoria == 0)
         {
@@ -961,7 +976,7 @@ int main(int argc, char *argv[]) {
         numeroDeGeracoes += 1;
         // printTimestamp(custoMelhorRotaConhecida);
 
-        calculaCustoMedioPopulacao(pop, &custoMedio);
+        calculaCustoMedioPopulacao(pop, &custoMedio, &custoPiorIndividuo, &custoMelhorIndividuo);
 
         printf("\n[Iteracao %d] melhor custo obtido: %.2f | custo medio: %.2f | contador: %d", numeroDeGeracoes, custoMelhorRotaConhecida, custoMedio, contadorGeracoesSemMelhoria);
     }

@@ -14,6 +14,8 @@ for filename in os.listdir(folder_path):
         lista_x_iteracoes = []
         lista_y_custoMinimo = []
         lista_y_custoMedio = []
+        lista_y_piorPop = []
+        lista_y_melhorPop = []
 
         with open(arquivo_timestamp) as valores:
             for linha in valores:
@@ -22,15 +24,19 @@ for filename in os.listdir(folder_path):
                 # Valor [1] é o tempo, não será usado
                 lista_y_custoMinimo.append(float(valores_split[2]))
                 lista_y_custoMedio.append(float(valores_split[3]))
+                lista_y_piorPop.append(float(valores_split[4]))
+                lista_y_melhorPop.append(float(valores_split[5]))
 
         plt.figure()
         plt.plot(lista_x_iteracoes, lista_y_custoMinimo, label="Custo mínimo")
         plt.plot(lista_x_iteracoes, lista_y_custoMedio, label="Custo médio da população")
+        plt.plot(lista_x_iteracoes, lista_y_piorPop, label="Pior indivíduo da geração")
+        plt.plot(lista_x_iteracoes, lista_y_melhorPop, label="Melhor indivíduo da geração")
 
         plt.title(f"Gráfico: {filename}")  # Add the filename as the title
 
 
-        plt.xlabel("Tempo (segundos)")
+        plt.xlabel("Iterações")
         plt.ylabel("Custo")
         plt.grid(True)
         plt.legend()

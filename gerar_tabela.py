@@ -90,7 +90,7 @@ melhores_solucoes = {
 
 os.makedirs(output_folder, exist_ok=True)
 
-rows = []  # To store rows for sorting
+rows = []
 
 for filename in os.listdir(folder_path):
     if filename.endswith(".txt"):
@@ -125,27 +125,27 @@ for filename in os.listdir(folder_path):
 
             gap = ((resultado_obtido - ms) / ms) * 100
 
-            # Format values to two decimal places
+            tempo_gasto = float(last_line.split()[1])
+
             chance_mutacao = f"{chance_mutacao:.2f}"
             resultado_obtido = f"{resultado_obtido:.2f}"
+            tempo_gasto = f"{tempo_gasto:.2f}"
             gap = f"{gap:.2f}"
 
             # Append a tuple with all necessary data for sorting
-            rows.append((float(gap), instancia, algoritmo_cruzamento, tamanho_pop, chance_mutacao, cond_parada, resultado_obtido, ms, gap))
+            rows.append((float(gap), instancia, algoritmo_cruzamento, tamanho_pop, chance_mutacao, cond_parada, resultado_obtido, ms, gap, tempo_gasto))
 
-# Sort rows by GAP (first element of the tuple) in descending order
 rows.sort(reverse=True, key=lambda x: x[0])
 
 with open(f"tabelas/resultados_todos.txt", "w+") as arquivo:
-    arquivo.write("\\begin{longtable}{|c|c|c|c|c|c|c|c|}\n")
+    arquivo.write("\\begin{longtable}{|c|c|c|c|c|c|c|c|c|}\n")
     arquivo.write("\\hline\n")
-    arquivo.write(f"Instância & Alg. cruz. & Tam. pop. & Chance mut.\\% & Crit. par. & Resultado & MS & GAP\\% \\\\\n")
+    arquivo.write(f"Instância & Alg. cr. & N. Pop. & Mut.\\% & Crit. par. & Resultado & MS & GAP\\% & t(s)\\\\\n")
     arquivo.write("\\hline\n")
 
-    # Write sorted rows
     for row in rows:
-        _, instancia, algoritmo_cruzamento, tamanho_pop, chance_mutacao, cond_parada, resultado_obtido, ms, gap = row
-        arquivo.write(f"{instancia} & {algoritmo_cruzamento} & {tamanho_pop} & {chance_mutacao} & {cond_parada} & {resultado_obtido} & {ms} & {gap} \\\\\n")
+        _, instancia, algoritmo_cruzamento, tamanho_pop, chance_mutacao, cond_parada, resultado_obtido, ms, gap, tempo_gasto = row
+        arquivo.write(f"{instancia} & {algoritmo_cruzamento} & {tamanho_pop} & {chance_mutacao} & {cond_parada} & {resultado_obtido} & {ms} & {gap} & {tempo_gasto}s\\\\\n")
 
     arquivo.write("\\hline\n")
     arquivo.write("\\caption{Comparação entre as melhores soluções conhecidas da literatura e as obtidas pelo algoritmo com base nos parâmetros de execução}\n")
