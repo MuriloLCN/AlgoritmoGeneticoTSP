@@ -310,9 +310,9 @@ void printTimestamp(float custo)
     fprintf(arquivoTimestamp, "%f %f \n", ((float) (clock() - inicioMelhoramento)) / CLOCKS_PER_SEC, custo);
 }
 
-void printTimestampIteracao(float custo, int iter)
+void printTimestampIteracao(float custo, int iter, float custoMedio)
 {
-    fprintf(arquivoTimestamp, "%d %f \n", iter, custo);
+    fprintf(arquivoTimestamp, "%d %f %f %f\n", iter, ((float) (clock() - inicioMelhoramento)) / CLOCKS_PER_SEC, custo, custoMedio);
 }
 
 float calculaDistancia(coordenada* c1, coordenada* c2)
@@ -547,8 +547,6 @@ void mutarCromossomo(populacao* pop, int i)
             numeroDeMutacoes = 1;
         }
 
-        printf("\nMutacao: ta %f num %d", taxaAlteracao, numeroDeMutacoes);
-
         for (int j = 0; j < numeroDeMutacoes; j++)
         {
             int v1 = (int) randMelhorado() % dimensao - 1;
@@ -579,7 +577,6 @@ void mutarCromossomo(populacao* pop, int i)
             troca(pop->cromossomo[i], v1, v2);
         }
 
-        printf("\nSaiu da mutacao");
     }
 }
 
@@ -688,72 +685,6 @@ void atualizarPopulacao(populacao* populacaoAtual, populacao* novosIndividuos) {
     }
 }
 
-// void atualizarPopulacao(populacao* populacaoAtual, populacao* novosIndividuos)
-// {
-//     // Considerando que as duas populações estão ordenadas pela aptidão, utiliza a técnica do Stead Stated em lote
-
-//     populacao* buffer_populacao = malloc(sizeof(populacao));
-//     buffer_populacao->tamanho = populacaoAtual->tamanho;
-//     buffer_populacao->avaliacao = malloc(sizeof(float) * populacaoAtual->tamanho);
-//     buffer_populacao->cromossomo = malloc(sizeof(int*) * populacaoAtual->tamanho);
-
-//     int indice_pop_atual = 0;
-//     int indice_pop_nova = 0;
-//     for (int i = 0; i < populacaoAtual->tamanho; i++)
-//     {
-//         if ((indice_pop_atual < populacaoAtual->tamanho) && (indice_pop_nova < novosIndividuos->tamanho))
-//         {
-//             if (populacaoAtual->avaliacao[indice_pop_atual] < novosIndividuos->avaliacao[indice_pop_nova])
-//             {
-//                 buffer_populacao->avaliacao[i] = populacaoAtual->avaliacao[indice_pop_atual];
-//                 buffer_populacao->cromossomo[i] = populacaoAtual->cromossomo[indice_pop_atual];
-//                 indice_pop_atual++;
-//             }
-
-//             else
-//             {
-//                 buffer_populacao->avaliacao[i] = novosIndividuos->avaliacao[indice_pop_nova];
-//                 buffer_populacao->cromossomo[i] = novosIndividuos->cromossomo[indice_pop_nova];
-//                 indice_pop_nova++;
-//             }
-//         }
-    
-//         else if (indice_pop_atual < populacaoAtual->tamanho)
-//         {
-//             buffer_populacao->avaliacao[i] = populacaoAtual->avaliacao[indice_pop_atual];
-//             buffer_populacao->cromossomo[i] = populacaoAtual->cromossomo[indice_pop_atual];
-//             indice_pop_atual++;
-//         }
-
-//         else if (indice_pop_nova < novosIndividuos->tamanho)
-//         {
-//             buffer_populacao->avaliacao[i] = novosIndividuos->avaliacao[indice_pop_nova];
-//             buffer_populacao->cromossomo[i] = novosIndividuos->cromossomo[indice_pop_nova];
-//             indice_pop_nova++;
-//         }
-//     }
-
-//     // Limpando os ponteiros dos cromossomos descartados
-
-//     for (int i = indice_pop_atual; i < populacaoAtual->tamanho; i++)
-//     {
-//         free(populacaoAtual->cromossomo[i]);
-//     }
-
-//     for (int i = indice_pop_nova; i < novosIndividuos->tamanho; i++)
-//     {
-//         free(novosIndividuos->cromossomo[i]);
-//     }
-
-//     // Copiando para a população atual novamente
-
-//     for (int i = 0; i < populacaoAtual->tamanho; i++)
-//     {
-//         populacaoAtual->cromossomo[i] = buffer_populacao->cromossomo[i];
-//         populacaoAtual->avaliacao[i] = buffer_populacao->avaliacao[i];
-//     }
-// }
-
 void copiarRota(int* fonte, int* destino)
 {
     /* Copia uma rota da fonte para o destino*/
@@ -817,7 +748,7 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    numeroDePaisSelecionadosParaCruzamento = (int) (0.5 * tamanhoPopulacao);
+    numeroDePaisSelecionadosParaCruzamento = (int) (0.15 * tamanhoPopulacao);
 
     // Precisamos de pares. Aqui foi utilizado uma monogamia intrageracional.
     // Caso um pai fique sem par, ele não poderia cruzar, então precisamos garantir que um número par deles sejam selecionados.
@@ -915,7 +846,10 @@ int main(int argc, char *argv[]) {
 
     inicioMelhoramento = clock();
     // printTimestamp(custoMelhorRotaConhecida);
-    printTimestampIteracao(custoMelhorRotaConhecida, 0);
+
+    calculaCustoMedioPopulacao(pop, &custoMedio);
+
+    printTimestampIteracao(custoMelhorRotaConhecida, 0, custoMedio);
 
     printf("\nEntrando no laco");
     
@@ -927,11 +861,11 @@ int main(int argc, char *argv[]) {
     {
         selecionarCromossomos(pop, paisSelecionados);
 
-        printf("\nSelecionou cromossomos");
+        // printf("\nSelecionou cromossomos");
 
         cruzarCromossomos(pop, paisSelecionados, novosIndividuos);
 
-        printf("\nCruzou cromossomos");
+        // printf("\nCruzou cromossomos");
 
         for (int i = 0; i < pop->tamanho; i++)
         {
@@ -946,7 +880,7 @@ int main(int argc, char *argv[]) {
             doisOpt(pop, i);
         }
 
-        printf("\nMutou e fez 2opt com os cromossomos");
+        // printf("\nMutou e fez 2opt com os cromossomos");
         avaliarCromossomos(novosIndividuos);
         
         ordenaPopulacao(pop);
@@ -964,14 +898,14 @@ int main(int argc, char *argv[]) {
         //     printf("\nAvaliacao de novosIndividuos[%d]: %f", i, novosIndividuos->avaliacao[i]);
         // }
 
-        printf("\nAtualizando populacao");
+        // printf("\nAtualizando populacao");
         atualizarPopulacao(pop, novosIndividuos);
 
-        printf("\nPopulacao atualizada");
+        // printf("\nPopulacao atualizada");
 
         avaliarCromossomos(pop);
 
-        printf("\nAvaliou cromossomos");
+        // printf("\nAvaliou cromossomos");
 
         booleano flagMelhorouRota = False;
 
@@ -996,13 +930,15 @@ int main(int argc, char *argv[]) {
             // {
             //     printf("%d ", melhorRotaConhecida[j]);
             // }
-            printTimestampIteracao(custoMelhorRotaConhecida, numeroDeGeracoes);
+            
         }
         else
         {
             contadorGeracoesSemMelhoria -= 1;
         }
 
+        printTimestampIteracao(custoMelhorRotaConhecida, numeroDeGeracoes, custoMedio);
+         
         if (contadorGeracoesSemMelhoria == 0)
         {
             atingiuCriterioParada = True;
@@ -1013,7 +949,7 @@ int main(int argc, char *argv[]) {
 
         calculaCustoMedioPopulacao(pop, &custoMedio);
 
-        printf("\nIteracao %d, atingiu criterio de parada: %d, melhor custo obtido: %f, custo medio: %f", numeroDeGeracoes, atingiuCriterioParada, custoMelhorRotaConhecida, custoMedio);
+        printf("\n[Iteracao %d] melhor custo obtido: %.2f | custo medio: %.2f | contador: %d", numeroDeGeracoes, custoMelhorRotaConhecida, custoMedio, contadorGeracoesSemMelhoria);
     }
 
     end = clock();

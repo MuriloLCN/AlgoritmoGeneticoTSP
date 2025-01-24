@@ -5,24 +5,30 @@ import matplotlib.pyplot as plt
 def gerar_graficos(instancia: str) -> None:
 
     labels = []
-    listas_x = []
-    listas_y = []
+    listas_x_iteracoes = []
+    listas_y_custoMinimo = []
+    listas_y_custoMedio = []
 
     for timestamp in timestamps_gerados:
         if (timestamp.replace(".txt", "")).endswith(instancia):
             with open(timestamp) as valores:
                 lx = []
                 ly = []
+                lz = []
                 for linha in valores:
-                    x, y = map(float, linha.split())
-                    lx.append(x)
-                    ly.append(y)
-            listas_x.append(lx)
-            listas_y.append(ly)
+                    valores = linha.split()
+                    lx.append(float(valores[0]))
+                    # Valor [1] é o tempo, não será usado
+                    ly.append(float(valores[2]))
+                    lz.append(float(valores[3]))
+            listas_x_iteracoes.append(lx)
+            listas_y_custoMinimo.append(ly)
+            listas_y_custoMedio.append(lz)
             labels.append(timestamp.replace(".txt", ""))
 
-    for i in range(len(listas_x)):
-        plt.plot(listas_x[i], listas_y[i], label=labels[i])
+    for i in range(len(listas_x_iteracoes)):
+        plt.plot(listas_x_iteracoes[i], listas_y_custoMinimo[i], label=(labels[i] + " (mínimo)"))
+        plt.plot(listas_x_iteracoes[i], listas_y_custoMedio[i], label=labels[i] + " (custo médio)")
 
     plt.xlabel("Tempo (segundos)")
     plt.ylabel("Custo")
@@ -69,35 +75,46 @@ def gerar_tabelas(variacao: str) -> None:
         arquivo.write("\\label{tab:my_label}\n")
         arquivo.write("\\end{table}\n")
 
+# Trocar operador
 algoritmo_cruzamento = ["0", "1"]
 
 numero_individuos = ["50", "100"]
 
-chances_mutacao = ["0.075"]
+chances_mutacao = ["0.005", "0.01", "0.1"]
 
-criterio_parada = ["16", "256"]
+criterio_parada = ["100", "500", "1000"]
 
-arquivos_de_teste =[
-                    "u574.tsp"
-                    "pcb1173.tsp",
-                    "pr1002.tsp",
-                    "brd14051.tsp",
-                    "fnl4461.tsp",
-                    "d15112.tsp",
-                    "pla33810.tsp",
-                    "pla85900.tsp",
-                    ]
+arquivos_de_teste = [
+                     "u574.tsp",
+                     "kroA100.tsp",
+                     "a280.tsp"
+]
 
 melhores_solucoes_conhecidas = [
-                                36905,    # u574
-                                56892,    # pcb1173
-                                295045,   # pr1002
-                                469385,   # brd14051
-                                182566,   # fnl4461
-                                1573084,  # d15112
-                                66048945, # pla33810 
-                                142382641,# pla85900
-                                ]
+    36905, 21282, 2579
+]
+
+# arquivos_de_teste =[
+#                     "u574.tsp"
+#                     "pcb1173.tsp",
+#                     "pr1002.tsp",
+#                     "brd14051.tsp",
+#                     "fnl4461.tsp",
+#                     "d15112.tsp",
+#                     "pla33810.tsp",
+#                     "pla85900.tsp",
+#                     ]
+
+# melhores_solucoes_conhecidas = [
+#                                 36905,    # u574
+#                                 56892,    # pcb1173
+#                                 259045,   # pr1002
+#                                 469385,   # brd14051
+#                                 182566,   # fnl4461
+#                                 1573084,  # d15112
+#                                 66048945, # pla33810 
+#                                 142382641,# pla85900
+#                                 ]
 
 timestamps_gerados = []  # Arquivos .txt gerados e salvos
 
@@ -141,15 +158,17 @@ if __name__ == "__main__":
                         num_executado_de_testes += 1
                         print(f"Teste numero {num_executado_de_testes} de {num_total_testes} feito [{round((num_executado_de_testes*100)/num_total_testes, 2)}%]")
 
-    for instancia in arquivos_de_teste:
-        instancia = instancia.replace(".tsp", "")
+    # for instancia in arquivos_de_teste:
+        # instancia = instancia.replace(".tsp", "")
 
-        gerar_graficos(instancia, timestamps_gerados)
+        # gerar_graficos(instancia)
 
-    for variacao in timestamps_gerados:
-        variacao = "".join(variacao.split("-")[0:-1])
+    # for variacao in timestamps_gerados:
+    #     variacao = "".join(variacao.split("-")[0:-1])
 
-        if os.path.isfile(f"tabelas/{variacao}.txt"):
-            continue
+    #     print(f"Gerando tabela para variacao: {variacao}")
 
-        gerar_tabelas(variacao)
+    #     if os.path.isfile(f"tabelas/{variacao}.txt"):
+    #         continue
+
+    #     gerar_tabelas(variacao)
