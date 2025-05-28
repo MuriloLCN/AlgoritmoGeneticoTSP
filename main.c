@@ -15,6 +15,7 @@
 
 #define TAM_BUFFER_ENTRADA 1024
 #define LIMITE_ALOCACAO 500
+#define MAX_THREADS 16
 
 typedef struct populacao
 {
@@ -23,9 +24,15 @@ typedef struct populacao
     float *avaliacao;
 }populacao;
 
+// typedef struct packVizinhoMaisProximo {
+//     int* vetor;
+//     int custo;
+// }packVizinhoMaisProximo;
+
 typedef struct packVizinhoMaisProximo {
-    int* vetor;
-    int custo;
+    int **vetor;
+    float *custo;
+    int inicio, fim;
 }packVizinhoMaisProximo;
 
 typedef struct packCalculaCustoRota {
@@ -47,6 +54,7 @@ coordenada* listaDeVertices;
 int dimensao;
 int limiteExecucaoHoras = 6;
 int algoritmoCruzamento;
+int numeroThreads;
 clock_t inicioMelhoramento;
 clock_t inicioExecucao;
 float alpha;
@@ -79,32 +87,53 @@ populacao* gerarPopulacaoInicial(int tamanho)
     nova_populacao->avaliacao = malloc(sizeof(float) * tamanho);
     nova_populacao->cromossomo = malloc(sizeof(int*) * tamanho);
 
-    float custo;
+    int intervalo = tamanho / numeroThreads;
+    int resto = tamanho - (intervalo * numeroThreads);
+
+    // float custo;
     // loop que inicializa cada cromossomo
 
-    pthread_t threadPool[tamanho];
-    packVizinhoMaisProximo packPool[tamanho];
+    pthread_t threadPool[numeroThreads];
+    packVizinhoMaisProximo packPool[numeroThreads];
 
     for (int i = 0; i < tamanho; i++)
     {
         // printf("\nCriando packPool (%d de %d)", i, tamanho);
         nova_populacao->cromossomo[i] = malloc(sizeof(int) * (dimensao + 1));
-        packPool[i].vetor = nova_populacao->cromossomo[i];
-        packPool[i].custo = 0;
+        nova_populacao->avaliacao[i] = 0.0;
+        // packPool[i].vetor = nova_populacao->cromossomo[i];
+        // packPool[i].custo = 0;
     }
 
-    for (int i = 0; i < tamanho; i++)
+    int ultimoIndice = 0;
+    // distribui a criação dos cromossomos entre as threads em intervalos
+    for (int i = 0; i < numeroThreads; i++)
+    {
+        packPool[i].vetor = nova_populacao->cromossomo;
+        packPool[i].custo = nova_populacao->avaliacao;
+
+        packPool[i].inicio = ultimoIndice;
+        packPool[i].fim = ultimoIndice + intervalo;
+        if (resto) // verifica se ha resto a ser dividido entre as threads (evita que a ultima thread fique sobrecarregada com mais trabalho)
+        {
+            packPool[i].fim++;
+            resto--;
+        }
+        ultimoIndice = packPool[i].fim;
+    }
+
+    for (int i = 0; i < numeroThreads; i++)
     {
         // printf("\nIniciando threads (%d de %d)", i, tamanho);
         pthread_create(&(threadPool[i]), NULL, vizinhoMaisProximo, (void*)&(packPool[i]));
     }
 
-    for (int i = 0; i < tamanho; i++)
+    for (int i = 0; i < numeroThreads; i++)
     {
         // printf("\nJoining threads (%d de %d)", i, tamanho);
         pthread_join(threadPool[i], NULL);
 
-        nova_populacao->avaliacao[i] = packPool[i].custo;
+        // nova_populacao->avaliacao[i] = packPool[i].custo;
     }
 
     // for (int i = 0; i < tamanho; i++)
@@ -396,62 +425,71 @@ void *vizinhoMaisProximo(void* ptr)
 {
     packVizinhoMaisProximo* pack;
     pack = (packVizinhoMaisProximo*)ptr;
-    int* rota = pack->vetor;
-    int custo = pack->custo;
-    int atual = (int)randMelhorado() % dimensao;
-    int inicial = atual;
+    int** rota = pack->vetor;
+    float* custo = pack->custo;
+    // int atual = (int)randMelhorado() % dimensao;
+    // int inicial = atual;
+    int atual, inicial, indiceCromossomoAtual, indiceRota;
 
-    int indiceRota = 0;
+    // int indiceRota = 0;
 
     booleano visitados[dimensao];
 
-    for (int i = 0; i < dimensao; i++)
+    for (indiceCromossomoAtual = pack->inicio; indiceCromossomoAtual <= pack->fim; indiceCromossomoAtual++)
     {
-        visitados[i] = False;
-    }
+        atual = (int)randMelhorado() % dimensao;
+        inicial = atual;
+        indiceRota = 0;
 
-    visitados[atual] = True;
-    rota[indiceRota] = atual;
-    indiceRota++;
-
-    float distanciaTotal = 0.0;
-
-    for (int passo = 1; passo < dimensao; passo++)
-    {
-        float menorDistancia = INFINITY;
-        int prox = -1;
-
-        for (int j = 0; j < dimensao; j++)
+        for (int i = 0; i < dimensao; i++)
         {
-            if (visitados[j] == False)
+            visitados[i] = False;
+        }
+
+        visitados[atual] = True;
+        rota[indiceCromossomoAtual][indiceRota] = atual;
+        indiceRota++;
+
+        float distanciaTotal = 0.0;
+
+        for (int passo = 1; passo < dimensao; passo++)
+        {
+            float menorDistancia = INFINITY;
+            int prox = -1;
+
+            for (int j = 0; j < dimensao; j++)
             {
-                float distancia = calculaDistancia(&listaDeVertices[atual], &listaDeVertices[j]);
-                if (distancia < menorDistancia)
+                if (visitados[j] == False)
                 {
-                    menorDistancia = distancia;
-                    prox = j;
+                    float distancia = calculaDistancia(&listaDeVertices[atual], &listaDeVertices[j]);
+                    if (distancia < menorDistancia)
+                    {
+                        menorDistancia = distancia;
+                        prox = j;
+                    }
                 }
             }
+
+            if (prox == -1)
+            {
+                printf("\nErro: Nenhum vértice restante para visitar.");
+                exit(1);
+            }
+
+            visitados[prox] = 1;
+            distanciaTotal += menorDistancia;
+            atual = prox;
+
+            rota[indiceCromossomoAtual][indiceRota] = atual;
+            indiceRota++;
         }
 
-        if (prox == -1)
-        {
-            printf("\nErro: Nenhum vértice restante para visitar.");
-            exit(1);
-        }
-
-        visitados[prox] = 1;
-        distanciaTotal += menorDistancia;
-        atual = prox;
-
-        rota[indiceRota] = atual;
-        indiceRota++;
+        rota[indiceCromossomoAtual][indiceRota] = inicial;
+        distanciaTotal += calculaDistancia(&listaDeVertices[atual], &listaDeVertices[inicial]);
+        pack->custo[indiceCromossomoAtual] = distanciaTotal;
     }
+        // printf("\nDistancia total percorrida: %2f\n", distanciaTotal);
 
-    rota[indiceRota] = inicial;
-    distanciaTotal += calculaDistancia(&listaDeVertices[atual], &listaDeVertices[inicial]);
-    pack->custo = distanciaTotal;
-    // printf("\nDistancia total percorrida: %2f\n", distanciaTotal);
 }
 
 void troca(int* rota, int i, int j)
@@ -823,7 +861,7 @@ int main(int argc, char *argv[]) {
         [criterio_parada]: O número de gerações sem melhoria para parar o algoritmo 
     */  
     
-    if (argc > 7) {
+    if (argc > 8) {
         printf("\nArgumentos incorretos, uso correto: \n[programa] arquivo_de_entrada.tsp [operador_cruzamento] [tamanho_populacao] [chance_mutacao] [criterio_parada]");
         printf("\n\nArgumentos:\n -- [programa]: O executavel compilado\n -- arquivo_de_entrada.tsp: O arquivo contendo a instancia a ser executada");
         printf("\n -- [operador_cruzamento]: Indica qual heuristica sera utilizada:");
@@ -832,6 +870,7 @@ int main(int argc, char *argv[]) {
         printf("\n -- [tamanho_populacao]: Um valor inteiro positivo para o tamanho da populacao (>= 0)");
         printf("\n -- [chance_mutacao]: Um valor entre 0 e 1 que indica a chance de alguma mutacao ocorrer em um individuo");
         printf("\n -- [criterio_parada]: O numero de geracoes sem melhoria para parar o algoritmo ");
+        printf("\n -- [threads]: O numero de threads a serem utilizadas (opcional, padrão: 1)");
         return 1;
     }
 
@@ -839,6 +878,17 @@ int main(int argc, char *argv[]) {
     int tamanhoPopulacao = atoi(argv[3]);
     chanceMutacao = atof(argv[4]);
     int numeroGeracoesSemMelhoriaParaParar = atoi(argv[5]);
+    numeroThreads = atoi(argv[6]);
+
+    // Verificacao se o numero de threads esta dentro do intervalo definido como permitido
+    if ((numeroThreads <= 0) || (numeroThreads > MAX_THREADS)) {
+        printf("\nErro: O número de threads deve ser um inteiro positivo e menor ou igual a %d", MAX_THREADS);
+        printf("\nAdotando o valor padrão de 1 thread.\n");
+        numeroThreads = 1;
+        return 1;
+    }
+
+    printf("\nNúmero de threads: %d", numeroThreads);
 
     if (tamanhoPopulacao <= 1)
     {
