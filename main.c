@@ -10,6 +10,7 @@
 #include<string.h>
 #include<time.h>
 #include<limits.h>
+#include<pthread.h>
 #include"leitura_arquivo.h"
 
 #define TAM_BUFFER_ENTRADA 1024
@@ -22,10 +23,26 @@ typedef struct populacao
     float *avaliacao;
 }populacao;
 
+typedef struct packVizinhoMaisProximo {
+    int* vetor;
+    int custo;
+}packVizinhoMaisProximo;
+
+typedef struct packCalculaCustoRota {
+    int* vetor;
+    float custo;
+}packCalculaCustoRota;
+
+typedef struct packDoisOpt {
+    populacao* pop;
+    int k;
+}packDoisOpt;
+
 int numeroDePaisSelecionadosParaCruzamento;
 float chanceMutacao;
 
 FILE* arquivoTimestamp;
+FILE* arquivoTempoConstrucao;
 coordenada* listaDeVertices;
 int dimensao;
 int limiteExecucaoHoras = 6;
@@ -34,8 +51,8 @@ clock_t inicioMelhoramento;
 clock_t inicioExecucao;
 float alpha;
 
-void vizinhoMaisProximo(int* rotaFinal, float* custo);
-float calculaCustoRota(int* rota);
+void *vizinhoMaisProximo(void* ptr);
+void* calculaCustoRota(void* ptr);
 float calculaDistancia(coordenada* c1, coordenada* c2);
 void copiarRota(int* fonte, int* destino);
 
@@ -64,14 +81,40 @@ populacao* gerarPopulacaoInicial(int tamanho)
 
     float custo;
     // loop que inicializa cada cromossomo
+
+    pthread_t threadPool[tamanho];
+    packVizinhoMaisProximo packPool[tamanho];
+
     for (int i = 0; i < tamanho; i++)
     {
-        // nova_populacao->avaliacao[i] = 0.0;
-        printf("\nGerando cromossomo %d de %d", i+1, tamanho);
+        // printf("\nCriando packPool (%d de %d)", i, tamanho);
         nova_populacao->cromossomo[i] = malloc(sizeof(int) * (dimensao + 1));
-        vizinhoMaisProximo(nova_populacao->cromossomo[i], &custo);
-        nova_populacao->avaliacao[i] = custo;
+        packPool[i].vetor = nova_populacao->cromossomo[i];
+        packPool[i].custo = 0;
     }
+
+    for (int i = 0; i < tamanho; i++)
+    {
+        // printf("\nIniciando threads (%d de %d)", i, tamanho);
+        pthread_create(&(threadPool[i]), NULL, vizinhoMaisProximo, (void*)&(packPool[i]));
+    }
+
+    for (int i = 0; i < tamanho; i++)
+    {
+        // printf("\nJoining threads (%d de %d)", i, tamanho);
+        pthread_join(threadPool[i], NULL);
+
+        nova_populacao->avaliacao[i] = packPool[i].custo;
+    }
+
+    // for (int i = 0; i < tamanho; i++)
+    // {
+    //     // nova_populacao->avaliacao[i] = 0.0;
+    //     printf("\nGerando cromossomo %d de %d", i+1, tamanho);
+    //     nova_populacao->cromossomo[i] = malloc(sizeof(int) * (dimensao + 1));
+    //     vizinhoMaisProximo(nova_populacao->cromossomo[i], &custo);
+    //     nova_populacao->avaliacao[i] = custo;
+    // }
     
     return nova_populacao;
 }
@@ -94,9 +137,28 @@ void ordenaPopulacao(populacao *pop) {
 
 void avaliarCromossomos (populacao* populacao_atual)
 {
+    pthread_t threadPool[populacao_atual->tamanho];
+    packCalculaCustoRota packPool[populacao_atual->tamanho];
+
     for (int i = 0; i < populacao_atual->tamanho; i++)
     {
-        populacao_atual->avaliacao[i] = calculaCustoRota(populacao_atual->cromossomo[i]);
+        packPool[i].vetor = populacao_atual->cromossomo[i];
+        packPool[i].custo = 0;
+    }
+
+    for (int i = 0; i < populacao_atual->tamanho; i++)
+    {
+        pthread_create(&(threadPool[i]), NULL, calculaCustoRota, (void*)&(packPool[i]));
+    }
+
+    for (int i = 0; i < populacao_atual->tamanho; i++)
+    {
+        pthread_join(threadPool[i], NULL);
+    }
+
+    for (int i = 0; i < populacao_atual->tamanho; i++)
+    {
+        populacao_atual->avaliacao[i] = packPool[i].custo;
     }
 }
 
@@ -308,6 +370,11 @@ void ha_repetidos(int vetor[]) {
     }
 }
 
+void printTempoConstrucao(float tempo)
+{
+    fprintf(arquivoTempoConstrucao, "%f", tempo);
+}
+
 void printTimestamp(float custo)
 {
     fprintf(arquivoTimestamp, "%f %f \n", ((float) (clock() - inicioMelhoramento)) / CLOCKS_PER_SEC, custo);
@@ -325,8 +392,12 @@ float calculaDistancia(coordenada* c1, coordenada* c2)
     return sqrt(dx*dx + dy*dy);
 }
 
-void vizinhoMaisProximo(int* rota, float* custo)
+void *vizinhoMaisProximo(void* ptr)
 {
+    packVizinhoMaisProximo* pack;
+    pack = (packVizinhoMaisProximo*)ptr;
+    int* rota = pack->vetor;
+    int custo = pack->custo;
     int atual = (int)randMelhorado() % dimensao;
     int inicial = atual;
 
@@ -366,7 +437,7 @@ void vizinhoMaisProximo(int* rota, float* custo)
         if (prox == -1)
         {
             printf("\nErro: Nenhum vértice restante para visitar.");
-            return;
+            exit(1);
         }
 
         visitados[prox] = 1;
@@ -379,7 +450,7 @@ void vizinhoMaisProximo(int* rota, float* custo)
 
     rota[indiceRota] = inicial;
     distanciaTotal += calculaDistancia(&listaDeVertices[atual], &listaDeVertices[inicial]);
-    *custo = distanciaTotal;
+    pack->custo = distanciaTotal;
     // printf("\nDistancia total percorrida: %2f\n", distanciaTotal);
 }
 
@@ -412,8 +483,12 @@ void exportaResultados(int* rotaFinal, float custoTotal, char* nomeArquivo, floa
     fclose(arquivoDeSaida);
 }
 
-float calculaCustoRota(int* rota)
+void* calculaCustoRota(void* ptr)
 {
+    packCalculaCustoRota* pack;
+    pack = (packCalculaCustoRota*) ptr;
+    int* rota = pack->vetor;
+
     float custoTotal = 0;
 
     for(int i = 0; i < dimensao; i++)
@@ -421,7 +496,7 @@ float calculaCustoRota(int* rota)
         custoTotal += calculaDistancia(&listaDeVertices[rota[i]], &listaDeVertices[rota[i+1]]);
     }
 
-    return custoTotal;
+    pack->custo = custoTotal;
 }
 
 void trocar_pontas(int* rotaFinal, int i, int j)
@@ -438,7 +513,7 @@ void trocar_pontas(int* rotaFinal, int i, int j)
     }
 }
 
-void doisOpt(populacao* pop, int k)
+void* doisOpt(void* ptr)
 {
     /*
         Realiza a heurística de melhoramento 2-opt aplicado ao first improvement. Apenas um passo.
@@ -449,6 +524,13 @@ void doisOpt(populacao* pop, int k)
             pop: A população atual
             i: O indivíduo o qual se quer aplicar o 2-opt
     */
+    
+    packDoisOpt* pack;
+    pack = (packDoisOpt*) ptr;
+
+    populacao* pop = pack->pop;
+    int k = pack->k;
+    
     int n = dimensao;
     // int* rotaFinal = pop->cromossomo[k];
 
@@ -786,9 +868,16 @@ int main(int argc, char *argv[]) {
     
     FILE *arquivoEntrada = fopen(argv[1], "r");
     arquivoTimestamp = fopen("timestamp.txt", "w+");
+    arquivoTempoConstrucao = fopen("tempo_construcao.txt", "w+");
 
     if (arquivoTimestamp == NULL) {
         printf("\nErro ao criar arquivo timestamp.txt\n");
+        return 1;
+    }
+
+    if (arquivoTempoConstrucao == NULL)
+    {
+        printf("\nErro ao criar o arquivo de log para o tempo de construcao");
         return 1;
     }
 
@@ -827,10 +916,20 @@ int main(int argc, char *argv[]) {
     float custoPiorIndividuo;
     float custoMelhorIndividuo; // difere da melhorRotaConhecida pq esse deve obrigatoriamente ser da população atual
 
+    clock_t inicioGeracaoPopulacaoInicial, fimGeracaoPopulacaoInicial;
+    double tempoCorrido;
+
+    inicioGeracaoPopulacaoInicial = clock();
+    
     // Populacao atual
     populacao* pop = gerarPopulacaoInicial(tamanhoPopulacao);
+    
+    fimGeracaoPopulacaoInicial = clock();
 
-    printf("\nPopulacao inicial gerada");
+    tempoCorrido = (double)(fimGeracaoPopulacaoInicial - inicioGeracaoPopulacaoInicial) / CLOCKS_PER_SEC;
+
+    printf("\nPopulacao inicial gerada, tempo gasto: %fs", tempoCorrido);
+    printTempoConstrucao(tempoCorrido);
 
     // printarPopulacao(pop);
 
@@ -890,18 +989,28 @@ int main(int argc, char *argv[]) {
         cruzarCromossomos(pop, paisSelecionados, novosIndividuos);
 
         // printf("\nCruzou cromossomos");
+        for (int i = 0; i < pop->tamanho; i++)
+        {
+            mutarCromossomo(pop, i);
+        }
+        
+        pthread_t threadPoolDoisOpt[pop->tamanho];
+        packDoisOpt packPoolDoisOpt[pop->tamanho];
 
         for (int i = 0; i < pop->tamanho; i++)
         {
-            // printf("\nIteracao com o cromossomo %d", i);
+            packPoolDoisOpt[i].pop = pop;
+            packPoolDoisOpt[i].k = i;
+        }
 
-            // printf("\nMutando...");
+        for (int i = 0; i < pop->tamanho; i++)
+        {
+            pthread_create(&(threadPoolDoisOpt[i]), NULL, doisOpt, (void*)&(packPoolDoisOpt[i]));
+        }
 
-            mutarCromossomo(pop, i);
-            
-            // printf("\nAplicando doisOpt...");
-
-            doisOpt(pop, i);
+        for (int i = 0; i < pop->tamanho; i++)
+        {
+            pthread_join(threadPoolDoisOpt[i], NULL);
         }
 
         // printf("\nMutou e fez 2opt com os cromossomos");
@@ -954,7 +1063,7 @@ int main(int argc, char *argv[]) {
             // {
             //     printf("%d ", melhorRotaConhecida[j]);
             // }
-            
+            printf("\n[Iteracao %d] melhor custo obtido: %.2f | custo medio: %.2f | contador: %d", numeroDeGeracoes, custoMelhorRotaConhecida, custoMedio, contadorGeracoesSemMelhoria);
         }
         else
         {
@@ -978,7 +1087,7 @@ int main(int argc, char *argv[]) {
 
         calculaCustoMedioPopulacao(pop, &custoMedio, &custoPiorIndividuo, &custoMelhorIndividuo);
 
-        printf("\n[Iteracao %d] melhor custo obtido: %.2f | custo medio: %.2f | contador: %d", numeroDeGeracoes, custoMelhorRotaConhecida, custoMedio, contadorGeracoesSemMelhoria);
+        // printf("\n[Iteracao %d] melhor custo obtido: %.2f | custo medio: %.2f | contador: %d", numeroDeGeracoes, custoMelhorRotaConhecida, custoMedio, contadorGeracoesSemMelhoria);
     }
 
     end = clock();
@@ -987,7 +1096,7 @@ int main(int argc, char *argv[]) {
     printf("\nFinalizado! Tempo gasto: %lf", cpu_time_used);
     printf("\nRota calculada: %f\n", custoMelhorRotaConhecida);
 
-    exportaResultados(pop->cromossomo[indiceMelhorRotaConhecida], custoMelhorRotaConhecida, argv[1], cpu_time_used);
+    // exportaResultados(pop->cromossomo[indiceMelhorRotaConhecida], custoMelhorRotaConhecida, argv[1], cpu_time_used);
 
     free(listaDeVertices);
 
@@ -1003,6 +1112,7 @@ int main(int argc, char *argv[]) {
 
     fclose(arquivoEntrada);
     fclose(arquivoTimestamp);
+    fclose(arquivoTempoConstrucao);
 
     return 0;
 }
