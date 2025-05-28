@@ -754,6 +754,22 @@ void cruzarCromossomos(populacao* pop, int* paisSelecionados, populacao* filhosG
         Cruza os pais selecionados da população para gerar numeroDePaisSelecionadosParaCruzamento/2 filhos.
     */
     
+    // TODO: paralelizar essa função de cruzamento
+    // OBS.: não sei se paralelizar rotinas dentro dos operadores é vantajoso, devido ao overhead de criação de threads. 
+    //       Nesse sentido, talvez seja melhor criar uma thread para um determinado intervalo de pais selecionados,
+    //       seguindo a mesma ideia de vizinho mais próximo.
+
+    // caso o numero de threads definido pelo usuário seja maior que o número de pais selecionados,
+    // reduz o número de threads usadas para o número de pais selecionados
+    int numeroDeThreadsUsadas = numeroThreads;
+    if (numeroDePaisSelecionadosParaCruzamento < numeroThreads)
+    {
+        numeroDeThreadsUsadas = numeroDePaisSelecionadosParaCruzamento;
+    }
+
+    int intervalo = numeroDePaisSelecionadosParaCruzamento / numeroDeThreadsUsadas;
+    int resto = numeroDePaisSelecionadosParaCruzamento - (intervalo * numeroDeThreadsUsadas);
+    
     for (int i = 0; i < numeroDePaisSelecionadosParaCruzamento / 2; i++)
     {
         int indicePai1 = paisSelecionados[2 * i];
