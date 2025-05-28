@@ -113,13 +113,15 @@ populacao* gerarPopulacaoInicial(int tamanho)
         packPool[i].custo = nova_populacao->avaliacao;
 
         packPool[i].inicio = ultimoIndice;
-        packPool[i].fim = ultimoIndice + intervalo;
+        packPool[i].fim = ultimoIndice + intervalo - 1;
         if (resto) // verifica se ha resto a ser dividido entre as threads (evita que a ultima thread fique sobrecarregada com mais trabalho)
         {
             packPool[i].fim++;
             resto--;
         }
-        ultimoIndice = packPool[i].fim;
+
+        printf("\nThread %d: Gerando cromossomos do índice %d até %d", i, packPool[i].inicio, packPool[i].fim);
+        ultimoIndice = packPool[i].fim + 1;
     }
 
     for (int i = 0; i < numeroThreads; i++)
