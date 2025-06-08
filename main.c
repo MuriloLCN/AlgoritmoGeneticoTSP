@@ -35,6 +35,11 @@ typedef struct packVizinhoMaisProximo {
     int inicio, fim;
 }packVizinhoMaisProximo;
 
+typedef struct packCruzamento {
+    int inicio, fim, *paisSelecionados;
+    populacao *pop, *filhosGerados;
+}packCruzamento;
+
 typedef struct packCalculaCustoRota {
     int* vetor;
     float custo;
@@ -748,6 +753,34 @@ void selecionarCromossomos(populacao* pop, int* paisSelecionados) {
     // }
 }
 
+void *wrapperOperadorCruzamento (void* ptr)
+{
+    packCruzamento *pack;
+    pack = (packCruzamento*) ptr;
+
+    for (int i = pack->inicio; i < pack->fim / 2; i++)
+    {
+        int indicePai1 = pack->paisSelecionados[2 * i];
+        int indicePai2 = pack->paisSelecionados[(2 * i) + 1];
+
+
+        if (algoritmoCruzamento == 0)
+        {
+            zx(pack->pop->cromossomo[indicePai1], pack->pop->cromossomo[indicePai2], pack->filhosGerados->cromossomo[i]);
+        }
+        else
+        {   
+            exx_crossover(pack->pop->cromossomo[indicePai1], pack->pop->cromossomo[indicePai2], pack->filhosGerados->cromossomo[i]);
+        }
+
+        // printf("\nFilho gerado %d: ", i);
+        // for (int j = 0; j <= dimensao; j++)
+        // {
+        //     printf("%d ", filhosGerados->cromossomo[i][j]);
+        // }
+    }
+}
+
 void cruzarCromossomos(populacao* pop, int* paisSelecionados, populacao* filhosGerados)
 {
     /*
@@ -768,29 +801,66 @@ void cruzarCromossomos(populacao* pop, int* paisSelecionados, populacao* filhosG
     }
 
     int intervalo = numeroDePaisSelecionadosParaCruzamento / numeroDeThreadsUsadas;
-    int resto = numeroDePaisSelecionadosParaCruzamento - (intervalo * numeroDeThreadsUsadas);
-    
-    for (int i = 0; i < numeroDePaisSelecionadosParaCruzamento / 2; i++)
-    {
-        int indicePai1 = paisSelecionados[2 * i];
-        int indicePai2 = paisSelecionados[(2 * i) + 1];
+    int resto = numeroDePaisSelecionadosParaCruzamento % numeroDeThreadsUsadas;
 
+    pthread_t threadPool[numeroDeThreadsUsadas];
+    packCruzamento packPool[numeroDeThreadsUsadas];
+    int threadRet[numeroDeThreadsUsadas];
 
-        if (algoritmoCruzamento == 0)
+    printf("\nCriando os packs ...\n");
+    int ultimoIndice = -1;
+    for (int i = 0; i < numeroDeThreadsUsadas; i++)
+    {   
+        // inicialização básica, apenas para os pacotes apontarem para os mesmos endereços de memória
+        packPool[i].pop = pop;
+        packPool[i].paisSelecionados = paisSelecionados;
+        packPool[i].filhosGerados = filhosGerados;
+
+        packPool[i].inicio = ultimoIndice + 1;
+        packPool[i].fim = packPool[i].inicio + intervalo;
+        if (resto)
         {
-            zx(pop->cromossomo[indicePai1], pop->cromossomo[indicePai2], filhosGerados->cromossomo[i]);
+            packPool[i].fim++;
+            resto--;
         }
-        else
-        {   
-            exx_crossover(pop->cromossomo[indicePai1], pop->cromossomo[indicePai2], filhosGerados->cromossomo[i]);
-        }
+
+        ultimoIndice = packPool[i].fim;  
+    }
+
+    printf("\nCriando as threads ...\n");
+    // disparando as threads
+    for (int i = 0; i < numeroDeThreadsUsadas; i++)
+    {
+        threadRet[i] = pthread_create(&(threadPool[i]), NULL, wrapperOperadorCruzamento, (void*) &(packPool[i]));
+    }
+    
+    printf("\nFechando os packs ...\n");
+    for (int i = 0; i < numeroDeThreadsUsadas; i++)
+    {
+        pthread_join(threadPool[i], NULL);
+    }
+
+    // for (int i = 0; i < numeroDePaisSelecionadosParaCruzamento / 2; i++)
+    // {
+    //     int indicePai1 = paisSelecionados[2 * i];
+    //     int indicePai2 = paisSelecionados[(2 * i) + 1];
+
+
+    //     if (algoritmoCruzamento == 0)
+    //     {
+    //         zx(pop->cromossomo[indicePai1], pop->cromossomo[indicePai2], filhosGerados->cromossomo[i]);
+    //     }
+    //     else
+    //     {   
+    //         exx_crossover(pop->cromossomo[indicePai1], pop->cromossomo[indicePai2], filhosGerados->cromossomo[i]);
+    //     }
 
         // printf("\nFilho gerado %d: ", i);
         // for (int j = 0; j <= dimensao; j++)
         // {
         //     printf("%d ", filhosGerados->cromossomo[i][j]);
         // }
-    }
+    // }
 }
 
 void printarPopulacao(populacao* pop)
