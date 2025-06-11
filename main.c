@@ -110,15 +110,15 @@ populacao* gerarPopulacaoInicial(int tamanho)
         // packPool[i].custo = 0;
     }
 
-    int ultimoIndice = -1;
+    int ultimoIndice = 0;
     // distribui a criação dos cromossomos entre as threads em intervalos
     for (int i = 0; i < numeroThreads; i++)
     {
         packPool[i].vetor = nova_populacao->cromossomo;
         packPool[i].custo = nova_populacao->avaliacao;
 
-        packPool[i].inicio = ultimoIndice + 1;
-        packPool[i].fim = packPool[i].inicio + intervalo;
+        packPool[i].inicio = ultimoIndice;
+        packPool[i].fim = ultimoIndice + intervalo - 1;
         if (resto) // verifica se ha resto a ser dividido entre as threads (evita que a ultima thread fique sobrecarregada com mais trabalho)
         {
             packPool[i].fim++;
@@ -545,19 +545,19 @@ void* calculaCustoRota(void* ptr)
 {
     packCalculaCustoRota* pack;
     pack = (packCalculaCustoRota*) ptr;
-    int* populacao = pack->pop;
+    populacao* pop = pack->pop;
 
     for (int j = pack->inicio; j < pack->fim; j++)
     {
         float custoTotal = 0;
-        int* rota = (pack->pop).cromossomo[j];
+        int* rota = pop->cromossomo[j];
 
         for(int i = 0; i < dimensao; i++)
         {
             custoTotal += calculaDistancia(&listaDeVertices[rota[i]], &listaDeVertices[rota[i+1]]);
         }
 
-        pack->avaliacao[j] = custoTotal;
+        pop->avaliacao[j] = custoTotal;
     }
 }
 
