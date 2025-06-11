@@ -43,6 +43,7 @@ typedef struct packCruzamento {
 typedef struct packCalculaCustoRota {
     int* vetor;
     float custo;
+    int inicio, fim;
 }packCalculaCustoRota;
 
 typedef struct packDoisOpt {
@@ -110,15 +111,15 @@ populacao* gerarPopulacaoInicial(int tamanho)
         // packPool[i].custo = 0;
     }
 
-    int ultimoIndice = 0;
+    int ultimoIndice = -1;
     // distribui a criação dos cromossomos entre as threads em intervalos
     for (int i = 0; i < numeroThreads; i++)
     {
         packPool[i].vetor = nova_populacao->cromossomo;
         packPool[i].custo = nova_populacao->avaliacao;
 
-        packPool[i].inicio = ultimoIndice;
-        packPool[i].fim = ultimoIndice + intervalo - 1;
+        packPool[i].inicio = ultimoIndice + 1;
+        packPool[i].fim = packPool[i].inicio + intervalo;
         if (resto) // verifica se ha resto a ser dividido entre as threads (evita que a ultima thread fique sobrecarregada com mais trabalho)
         {
             packPool[i].fim++;
@@ -173,26 +174,40 @@ void ordenaPopulacao(populacao *pop) {
 
 void avaliarCromossomos (populacao* populacao_atual)
 {
-    pthread_t threadPool[populacao_atual->tamanho];
-    packCalculaCustoRota packPool[populacao_atual->tamanho];
+    pthread_t threadPool[numeroThreads];
+    packCalculaCustoRota packPool[numeroThreads];
 
-    for (int i = 0; i < populacao_atual->tamanho; i++)
+    int intervalo = populacao_atual->tamanho / numeroThreads;
+    int resto = populacao_atual->tamanho - (intervalo * numeroThreads);
+
+    int ultimoElemento = -1;
+
+    for (int i = 0; i < numeroThreads; i++)
     {
         packPool[i].vetor = populacao_atual->cromossomo[i];
         packPool[i].custo = 0;
+
+        packPool[i].inicio = ultimoElemento + 1;
+        packPool[i].fim = packPool[i].inicio + intervalo;
+
+        if (resto)
+        {
+            packPool[i].fim += 1;
+            resto -= 1;
+        }
     }
 
-    for (int i = 0; i < populacao_atual->tamanho; i++)
+    for (int i = 0; i < numeroThreads; i++)
     {
         pthread_create(&(threadPool[i]), NULL, calculaCustoRota, (void*)&(packPool[i]));
     }
 
-    for (int i = 0; i < populacao_atual->tamanho; i++)
+    for (int i = 0; i < numeroThreads; i++)
     {
         pthread_join(threadPool[i], NULL);
     }
 
-    for (int i = 0; i < populacao_atual->tamanho; i++)
+    for (int i = 0; i < numeroThreads; i++)
     {
         populacao_atual->avaliacao[i] = packPool[i].custo;
     }
