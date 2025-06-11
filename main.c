@@ -41,8 +41,7 @@ typedef struct packCruzamento {
 }packCruzamento;
 
 typedef struct packCalculaCustoRota {
-    int* vetor;
-    float custo;
+    populacao* pop;
     int inicio, fim;
 }packCalculaCustoRota;
 
@@ -184,8 +183,7 @@ void avaliarCromossomos (populacao* populacao_atual)
 
     for (int i = 0; i < numeroThreads; i++)
     {
-        packPool[i].vetor = populacao_atual->cromossomo[i];
-        packPool[i].custo = 0;
+        packPool[i].pop = populacao_atual;
 
         packPool[i].inicio = ultimoElemento + 1;
         packPool[i].fim = packPool[i].inicio + intervalo;
@@ -207,10 +205,10 @@ void avaliarCromossomos (populacao* populacao_atual)
         pthread_join(threadPool[i], NULL);
     }
 
-    for (int i = 0; i < numeroThreads; i++)
-    {
-        populacao_atual->avaliacao[i] = packPool[i].custo;
-    }
+    // for (int i = 0; i < numeroThreads; i++)
+    // {
+    //     populacao_atual->avaliacao[i] = packPool[i].custo;
+    // }
 }
 
 booleano pertence_regiao(float lx, float ly, coordenada coordenadaInicial, coordenada atual)
@@ -547,16 +545,20 @@ void* calculaCustoRota(void* ptr)
 {
     packCalculaCustoRota* pack;
     pack = (packCalculaCustoRota*) ptr;
-    int* rota = pack->vetor;
+    int* populacao = pack->pop;
 
-    float custoTotal = 0;
-
-    for(int i = 0; i < dimensao; i++)
+    for (int j = pack->inicio; j < pack->fim; j++)
     {
-        custoTotal += calculaDistancia(&listaDeVertices[rota[i]], &listaDeVertices[rota[i+1]]);
-    }
+        float custoTotal = 0;
+        int* rota = (pack->pop).cromossomo[j];
 
-    pack->custo = custoTotal;
+        for(int i = 0; i < dimensao; i++)
+        {
+            custoTotal += calculaDistancia(&listaDeVertices[rota[i]], &listaDeVertices[rota[i+1]]);
+        }
+
+        pack->avaliacao[j] = custoTotal;
+    }
 }
 
 void trocar_pontas(int* rotaFinal, int i, int j)
