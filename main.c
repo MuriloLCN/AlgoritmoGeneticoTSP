@@ -746,7 +746,6 @@ void selecionarCromossomos(populacao* pop, int* paisSelecionados) {
     for (int i = 0; i < numeroDePaisSelecionadosParaCruzamento; i++) {
         float sorteio;
         int escolhido;
-
         do {
             sorteio = (float)rand() / RAND_MAX;
             float acumulado = 0.0;
@@ -760,9 +759,10 @@ void selecionarCromossomos(populacao* pop, int* paisSelecionados) {
             }
         } while (selecionados[escolhido] == True);
 
-        paisSelecionados[i] = escolhido;
         selecionados[escolhido] = True;
     }
+    
+    printf("\nfinalzin da selecao\n");
 
     // for (int i = 0; i < numeroDePaisSelecionadosParaCruzamento; i++)
     // {
@@ -775,11 +775,10 @@ void *wrapperOperadorCruzamento (void* ptr)
     packCruzamento *pack;
     pack = (packCruzamento*) ptr;
 
-    for (int i = pack->inicio; i < pack->fim / 2; i++)
+    for (int i = pack->inicio; i <= pack->fim; i++)
     {
         int indicePai1 = pack->paisSelecionados[2 * i];
         int indicePai2 = pack->paisSelecionados[(2 * i) + 1];
-
 
         if (algoritmoCruzamento == 0)
         {
@@ -790,11 +789,6 @@ void *wrapperOperadorCruzamento (void* ptr)
             exx_crossover(pack->pop->cromossomo[indicePai1], pack->pop->cromossomo[indicePai2], pack->filhosGerados->cromossomo[i]);
         }
 
-        // printf("\nFilho gerado %d: ", i);
-        // for (int j = 0; j <= dimensao; j++)
-        // {
-        //     printf("%d ", filhosGerados->cromossomo[i][j]);
-        // }
     }
 }
 
@@ -812,19 +806,24 @@ void cruzarCromossomos(populacao* pop, int* paisSelecionados, populacao* filhosG
     // caso o numero de threads definido pelo usuário seja maior que o número de pais selecionados,
     // reduz o número de threads usadas para o número de pais selecionados
     int numeroDeThreadsUsadas = numeroThreads;
-    if (numeroDePaisSelecionadosParaCruzamento < numeroThreads)
+    if ((numeroDePaisSelecionadosParaCruzamento / 2) < numeroThreads)
     {
         numeroDeThreadsUsadas = numeroDePaisSelecionadosParaCruzamento;
     }
 
-    int intervalo = numeroDePaisSelecionadosParaCruzamento / numeroDeThreadsUsadas;
-    int resto = numeroDePaisSelecionadosParaCruzamento % numeroDeThreadsUsadas;
+    // se vou fazer dois cruzamentos por thread, o numero do intervalo é 1, se forem feitos três cruzamentos por thread, o intervalo é 2, e assim por diante.
+    int intervalo = ((numeroDePaisSelecionadosParaCruzamento / 2) / numeroDeThreadsUsadas) - 1;
+    int resto = (numeroDePaisSelecionadosParaCruzamento / 2)  % numeroDeThreadsUsadas;
+
+    // printf("\nnumeroDePaisSelecionadosParaCruzamento: %d", numeroDePaisSelecionadosParaCruzamento);
+    // printf("\numeroDeThreadsUsadas: %d", numeroDeThreadsUsadas);
+    // printf("\nintervalo: %d", intervalo);
+    // printf("\nresto: %d", resto);
 
     pthread_t threadPool[numeroDeThreadsUsadas];
     packCruzamento packPool[numeroDeThreadsUsadas];
     int threadRet[numeroDeThreadsUsadas];
 
-    printf("\nCriando os packs ...\n");
     int ultimoIndice = -1;
     for (int i = 0; i < numeroDeThreadsUsadas; i++)
     {   
@@ -844,14 +843,12 @@ void cruzarCromossomos(populacao* pop, int* paisSelecionados, populacao* filhosG
         ultimoIndice = packPool[i].fim;  
     }
 
-    printf("\nCriando as threads ...\n");
     // disparando as threads
     for (int i = 0; i < numeroDeThreadsUsadas; i++)
     {
         threadRet[i] = pthread_create(&(threadPool[i]), NULL, wrapperOperadorCruzamento, (void*) &(packPool[i]));
     }
     
-    printf("\nFechando os packs ...\n");
     for (int i = 0; i < numeroDeThreadsUsadas; i++)
     {
         pthread_join(threadPool[i], NULL);
@@ -1139,11 +1136,8 @@ int main(int argc, char *argv[]) {
     {
         selecionarCromossomos(pop, paisSelecionados);
 
-        // printf("\nSelecionou cromossomos");
-
         cruzarCromossomos(pop, paisSelecionados, novosIndividuos);
 
-        // printf("\nCruzou cromossomos");
         for (int i = 0; i < pop->tamanho; i++)
         {
             mutarCromossomo(pop, i);
