@@ -32,6 +32,7 @@ if __name__ == "__main__":
     num_executado_de_testes = 0
 
     # Testes com threads
+    print("Iniciando testes com threads")
     for operador_crz in algoritmo_cruzamento:
         for tam_pop in numero_individuos:
             for chance_mut in chances_mutacao:
@@ -40,7 +41,7 @@ if __name__ == "__main__":
                         for num_threads in numero_threads:    
                             # str_nome_teste = f"{operador_crz}-{tam_pop}-{chance_mut.replace(".","")}-{qtd_parada}-{instancia.replace(".tsp", "")}"
                             temp = instancia.replace(".tsp", "")
-                            str_nome_teste = f"{temp}-{num_threads}"
+                            str_nome_teste = f"{temp}-{operador_crz}-{num_threads}"
 
                             str_execucao_windows = f"tsp.exe instancias/{instancia} {operador_crz} {tam_pop} {chance_mut} {qtd_parada} {num_threads}"
                             print(f"Realizando teste com os seguintes parametros: {str_execucao_windows}")
@@ -56,7 +57,33 @@ if __name__ == "__main__":
                             num_executado_de_testes += 1
                             print(f"Teste numero {num_executado_de_testes} de {num_total_testes} feito [{round((num_executado_de_testes*100)/num_total_testes, 2)}%]")
 
-    # TODO: Alterar o código sequencial p/ gerar o arquivo de construção tbm
+    print("Iniciando testes sequenciais")
 
-    # Repetir os testes com o código sequencial e colocar na pasta tbm
+    num_total_testes = len(algoritmo_cruzamento) * len(numero_individuos) * len(chances_mutacao) * len(criterio_parada) * len(arquivos_de_teste)
+
+    num_executado_de_testes = 0
+
+    for operador_crz in algoritmo_cruzamento:
+        for tam_pop in numero_individuos:
+            for chance_mut in chances_mutacao:
+                for qtd_parada in criterio_parada:                    
+                    for instancia in arquivos_de_teste:
+                        # str_nome_teste = f"{operador_crz}-{tam_pop}-{chance_mut.replace(".","")}-{qtd_parada}-{instancia.replace(".tsp", "")}"
+                        temp = instancia.replace(".tsp", "")
+                        str_nome_teste = f"{temp}-{operador_crz}-sequencial"
+
+                        str_execucao_windows = f"tsp_sequencial.exe instancias/{instancia} {operador_crz} {tam_pop} {chance_mut} {qtd_parada}"
+                        print(f"Realizando teste com os seguintes parametros: {str_execucao_windows}")
+                        
+                        if os.path.isfile(f"timestamps/{str_nome_teste}.txt"):
+                            continue
+
+                        os.system(str_execucao_windows)
+                                    
+                        shutil.move('timestamp.txt', f'timestamps/{str_nome_teste}.txt')
+                        shutil.move('tempo_construcao.txt', f'timestamps/constr-{str_nome_teste}.txt')
+
+                        num_executado_de_testes += 1
+                        print(f"Teste numero {num_executado_de_testes} de {num_total_testes} feito [{round((num_executado_de_testes*100)/num_total_testes, 2)}%]")
+
     

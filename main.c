@@ -47,7 +47,7 @@ typedef struct packCalculaCustoRota {
 
 typedef struct packDoisOpt {
     populacao* pop;
-    int k;
+    int inicio, fim;
 }packDoisOpt;
 
 int numeroDePaisSelecionadosParaCruzamento;
@@ -57,7 +57,7 @@ FILE* arquivoTimestamp;
 FILE* arquivoTempoConstrucao;
 coordenada* listaDeVertices;
 int dimensao;
-int limiteExecucaoHoras = 6;
+int limiteExecucaoHoras = 1;
 int algoritmoCruzamento;
 int numeroThreads;
 clock_t inicioMelhoramento;
@@ -584,47 +584,49 @@ void* doisOpt(void* ptr)
 
         Parâmetros:
             pop: A população atual
-            i: O indivíduo o qual se quer aplicar o 2-opt
+            inicio, fim: A faixa da população p/ aplicar o 2-opt
     */
     
     packDoisOpt* pack;
     pack = (packDoisOpt*) ptr;
 
     populacao* pop = pack->pop;
-    int k = pack->k;
-    
-    int n = dimensao;
-    // int* rotaFinal = pop->cromossomo[k];
+    int inicio = pack->inicio;
+    int fim = pack->fim;
 
-    int inicio_i = ((float) rand() / RAND_MAX) * (n - 1);
-    int fim_i = inicio_i + 0.1 * dimensao;
+    for (int k = inicio; k < fim; k++) {
+        int n = dimensao;
+        // int* rotaFinal = pop->cromossomo[k];
 
-    if (fim_i >= n)
-    {
-        fim_i = n - 1;
-        inicio_i = fim_i - 0.1 * dimensao;
-    }
+        int inicio_i = ((float) rand() / RAND_MAX) * (n - 1);
+        int fim_i = inicio_i + 0.1 * dimensao;
 
-    for (int i = inicio_i; i < fim_i; i++)
-    {
-        for (int j = i + 2; j < n; j++)
+        if (fim_i >= n)
         {
-            float d1 = -calculaDistancia(&(listaDeVertices[pop->cromossomo[k][i]]), &(listaDeVertices[pop->cromossomo[k][(i+1)]]));
-            float d2 = -calculaDistancia(&(listaDeVertices[pop->cromossomo[k][j]]), &(listaDeVertices[pop->cromossomo[k][(j+1) % n]]));
-            float d3 = calculaDistancia(&(listaDeVertices[pop->cromossomo[k][i]]), &(listaDeVertices[pop->cromossomo[k][j]]));
-            float d4 = calculaDistancia(&(listaDeVertices[pop->cromossomo[k][(i+1)]]), &(listaDeVertices[pop->cromossomo[k][(j+1) % n]]));
+            fim_i = n - 1;
+            inicio_i = fim_i - 0.1 * dimensao;
+        }
 
-            float delta = d1 + d2 + d3 + d4;
-
-            if (delta < 0)
+        for (int i = inicio_i; i < fim_i; i++)
+        {
+            for (int j = i + 2; j < n; j++)
             {
-                trocar_pontas(pop->cromossomo[k], i, j);
-                // pop->avaliacao[i] += delta;
-                // return;
+                float d1 = -calculaDistancia(&(listaDeVertices[pop->cromossomo[k][i]]), &(listaDeVertices[pop->cromossomo[k][(i+1)]]));
+                float d2 = -calculaDistancia(&(listaDeVertices[pop->cromossomo[k][j]]), &(listaDeVertices[pop->cromossomo[k][(j+1) % n]]));
+                float d3 = calculaDistancia(&(listaDeVertices[pop->cromossomo[k][i]]), &(listaDeVertices[pop->cromossomo[k][j]]));
+                float d4 = calculaDistancia(&(listaDeVertices[pop->cromossomo[k][(i+1)]]), &(listaDeVertices[pop->cromossomo[k][(j+1) % n]]));
+
+                float delta = d1 + d2 + d3 + d4;
+
+                if (delta < 0)
+                {
+                    trocar_pontas(pop->cromossomo[k], i, j);
+                    // pop->avaliacao[i] += delta;
+                    // return;
+                }
             }
         }
     }
-    
 }
 
 booleano presente(int* ciclo, int tamanho, int vertice) {
@@ -963,7 +965,7 @@ int main(int argc, char *argv[]) {
         [criterio_parada]: O número de gerações sem melhoria para parar o algoritmo 
     */  
     
-    if (argc > 8) {
+    if (argc > 8 || argc < 5) {
         printf("\nArgumentos incorretos, uso correto: \n[programa] arquivo_de_entrada.tsp [operador_cruzamento] [tamanho_populacao] [chance_mutacao] [criterio_parada]");
         printf("\n\nArgumentos:\n -- [programa]: O executavel compilado\n -- arquivo_de_entrada.tsp: O arquivo contendo a instancia a ser executada");
         printf("\n -- [operador_cruzamento]: Indica qual heuristica sera utilizada:");
@@ -1045,7 +1047,8 @@ int main(int argc, char *argv[]) {
 
     if (algoritmoCruzamento == 1)
     {
-        alpha = atof(argv[6]);
+        alpha = 0.01;
+        // alpha = atof(argv[6]);
     }
 
     lerArquivo(arquivoEntrada, &listaDeVertices, &dimensao);
@@ -1142,25 +1145,59 @@ int main(int argc, char *argv[]) {
         {
             mutarCromossomo(pop, i);
         }
+
+        int intervalo = pop->tamanho / numeroThreads;
+        int resto = pop->tamanho - (intervalo * numeroThreads);
+
+        pthread_t threadPool[numeroThreads];
+        packDoisOpt packPool[numeroThreads];
+
+        int ultimoIndice = 0;
+    
+        for (int i = 0; i < numeroThreads; i++)
+        {
+            packPool[i].pop = pop;
+
+            packPool[i].inicio = ultimoIndice;
+            packPool[i].fim = ultimoIndice + intervalo - 1;
+
+            if (resto) 
+            {
+                packPool[i].fim++;
+                resto--;
+            }
+
+            ultimoIndice = packPool[i].fim + 1;
+        }
+
+        for (int i = 0; i < numeroThreads; i++)
+        {
+            pthread_create(&(threadPool[i]), NULL, doisOpt, (void*)&(packPool[i]));
+        }
+
+        for (int i = 0; i < numeroThreads; i++)
+        {
+            pthread_join(threadPool[i], NULL);
+        }
         
-        pthread_t threadPoolDoisOpt[pop->tamanho];
-        packDoisOpt packPoolDoisOpt[pop->tamanho];
+        // pthread_t threadPoolDoisOpt[pop->tamanho];
+        // packDoisOpt packPoolDoisOpt[pop->tamanho];
 
-        for (int i = 0; i < pop->tamanho; i++)
-        {
-            packPoolDoisOpt[i].pop = pop;
-            packPoolDoisOpt[i].k = i;
-        }
+        // for (int i = 0; i < pop->tamanho; i++)
+        // {
+        //     packPoolDoisOpt[i].pop = pop;
+        //     packPoolDoisOpt[i].k = i;
+        // }
 
-        for (int i = 0; i < pop->tamanho; i++)
-        {
-            pthread_create(&(threadPoolDoisOpt[i]), NULL, doisOpt, (void*)&(packPoolDoisOpt[i]));
-        }
+        // for (int i = 0; i < pop->tamanho; i++)
+        // {
+        //     pthread_create(&(threadPoolDoisOpt[i]), NULL, doisOpt, (void*)&(packPoolDoisOpt[i]));
+        // }
 
-        for (int i = 0; i < pop->tamanho; i++)
-        {
-            pthread_join(threadPoolDoisOpt[i], NULL);
-        }
+        // for (int i = 0; i < pop->tamanho; i++)
+        // {
+        //     pthread_join(threadPoolDoisOpt[i], NULL);
+        // }
 
         // printf("\nMutou e fez 2opt com os cromossomos");
         avaliarCromossomos(novosIndividuos);
