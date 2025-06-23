@@ -43,13 +43,13 @@ if __name__ == "__main__":
                             temp = instancia.replace(".tsp", "")
                             str_nome_teste = f"{temp}-{operador_crz}-{num_threads}"
 
-                            str_execucao_windows = f"tsp.exe instancias/{instancia} {operador_crz} {tam_pop} {chance_mut} {qtd_parada} {num_threads}"
-                            print(f"Realizando teste com os seguintes parametros: {str_execucao_windows}")
+                            str_execucao_linux = f"./tsp instancias/{instancia} {operador_crz} {tam_pop} {chance_mut} {qtd_parada} {num_threads}"
+                            print(f"Realizando teste com os seguintes parametros: {str_execucao_linux}")
                             
                             if os.path.isfile(f"timestamps/{str_nome_teste}.txt"):
                                 continue
 
-                            os.system(str_execucao_windows)
+                            os.system(str_execucao_linux)
                                         
                             shutil.move('timestamp.txt', f'timestamps/{str_nome_teste}.txt')
                             shutil.move('tempo_construcao.txt', f'timestamps/constr-{str_nome_teste}.txt')
@@ -72,13 +72,18 @@ if __name__ == "__main__":
                         temp = instancia.replace(".tsp", "")
                         str_nome_teste = f"{temp}-{operador_crz}-sequencial"
 
-                        str_execucao_windows = f"tsp_sequencial.exe instancias/{instancia} {operador_crz} {tam_pop} {chance_mut} {qtd_parada}"
-                        print(f"Realizando teste com os seguintes parametros: {str_execucao_windows}")
+                        str_execucao_linux = f"./tsp_sequencial.exe instancias/{instancia} {operador_crz} {tam_pop} {chance_mut} {qtd_parada}"
+                        
+                        # Alpha
+                        if operador_crz == 1:
+                            str_execucao_linux = str_execucao_linux + " 0.01"
+                        
+                        print(f"Realizando teste com os seguintes parametros: {str_execucao_linux}")
                         
                         if os.path.isfile(f"timestamps/{str_nome_teste}.txt"):
                             continue
 
-                        os.system(str_execucao_windows)
+                        os.system(str_execucao_linux)
                                     
                         shutil.move('timestamp.txt', f'timestamps/{str_nome_teste}.txt')
                         shutil.move('tempo_construcao.txt', f'timestamps/constr-{str_nome_teste}.txt')
