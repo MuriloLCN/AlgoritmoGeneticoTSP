@@ -14,7 +14,7 @@ numero_threads = ["1", "2", "3", "4", "5", "6", "7", "8"]
 
 # Aumentar p/ instâncias dps que estiver funcionando
 arquivos_de_teste = [
-                     "fnl4461",
+                     "fnl4461.tsp",
                      "d15112.tsp"
 ]
 
