@@ -26,9 +26,10 @@ int numeroDePaisSelecionadosParaCruzamento;
 float chanceMutacao;
 
 FILE* arquivoTimestamp;
+FILE* arquivoTempoConstrucao;
 coordenada* listaDeVertices;
 int dimensao;
-int limiteExecucaoHoras = 6;
+int limiteExecucaoHoras = 1;
 int algoritmoCruzamento;
 clock_t inicioMelhoramento;
 clock_t inicioExecucao;
@@ -306,6 +307,11 @@ void ha_repetidos(int vetor[]) {
             }
         }
     }
+}
+
+void printTempoConstrucao(float tempo)
+{
+    fprintf(arquivoTempoConstrucao, "%f", tempo);
 }
 
 void printTimestamp(float custo)
@@ -786,6 +792,7 @@ int main(int argc, char *argv[]) {
     
     FILE *arquivoEntrada = fopen(argv[1], "r");
     arquivoTimestamp = fopen("timestamp.txt", "w+");
+    arquivoTempoConstrucao = fopen("tempo_construcao.txt", "w+");
 
     if (arquivoTimestamp == NULL) {
         printf("\nErro ao criar arquivo timestamp.txt\n");
@@ -794,6 +801,12 @@ int main(int argc, char *argv[]) {
 
     if (arquivoEntrada == NULL) {
         printf("\nErro ao abrir arquivo de entrada");
+        return 1;
+    }
+
+    if (arquivoTempoConstrucao == NULL)
+    {
+        printf("\nErro ao criar o arquivo de log para o tempo de construcao");
         return 1;
     }
 
@@ -827,8 +840,17 @@ int main(int argc, char *argv[]) {
     float custoPiorIndividuo;
     float custoMelhorIndividuo; // difere da melhorRotaConhecida pq esse deve obrigatoriamente ser da população atual
 
+    clock_t inicioGeracaoPopulacaoInicial, fimGeracaoPopulacaoInicial;
+    double tempoCorrido;
+
+    inicioGeracaoPopulacaoInicial = clock();
     // Populacao atual
     populacao* pop = gerarPopulacaoInicial(tamanhoPopulacao);
+
+    fimGeracaoPopulacaoInicial = clock();
+
+    tempoCorrido = (double)(fimGeracaoPopulacaoInicial - inicioGeracaoPopulacaoInicial) / CLOCKS_PER_SEC;
+    printTempoConstrucao(tempoCorrido);
 
     printf("\nPopulacao inicial gerada");
 
@@ -954,6 +976,7 @@ int main(int argc, char *argv[]) {
             // {
             //     printf("%d ", melhorRotaConhecida[j]);
             // }
+            printf("\n[Iteracao %d] melhor custo obtido: %.2f | custo medio: %.2f | contador: %d", numeroDeGeracoes, custoMelhorRotaConhecida, custoMedio, contadorGeracoesSemMelhoria);
             
         }
         else
@@ -978,7 +1001,6 @@ int main(int argc, char *argv[]) {
 
         calculaCustoMedioPopulacao(pop, &custoMedio, &custoPiorIndividuo, &custoMelhorIndividuo);
 
-        printf("\n[Iteracao %d] melhor custo obtido: %.2f | custo medio: %.2f | contador: %d", numeroDeGeracoes, custoMelhorRotaConhecida, custoMedio, contadorGeracoesSemMelhoria);
     }
 
     end = clock();
@@ -987,7 +1009,7 @@ int main(int argc, char *argv[]) {
     printf("\nFinalizado! Tempo gasto: %lf", cpu_time_used);
     printf("\nRota calculada: %f\n", custoMelhorRotaConhecida);
 
-    exportaResultados(pop->cromossomo[indiceMelhorRotaConhecida], custoMelhorRotaConhecida, argv[1], cpu_time_used);
+    // exportaResultados(pop->cromossomo[indiceMelhorRotaConhecida], custoMelhorRotaConhecida, argv[1], cpu_time_used);
 
     free(listaDeVertices);
 
@@ -1003,6 +1025,7 @@ int main(int argc, char *argv[]) {
 
     fclose(arquivoEntrada);
     fclose(arquivoTimestamp);
+    fclose(arquivoTempoConstrucao);
 
     return 0;
 }
