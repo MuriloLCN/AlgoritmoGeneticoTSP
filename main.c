@@ -764,8 +764,6 @@ void selecionarCromossomos(populacao* pop, int* paisSelecionados) {
         selecionados[escolhido] = True;
     }
     
-    printf("\nfinalzin da selecao\n");
-
     // for (int i = 0; i < numeroDePaisSelecionadosParaCruzamento; i++)
     // {
     //     printf("\npais[%d] = %d", i, paisSelecionados[i]);
