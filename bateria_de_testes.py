@@ -72,10 +72,10 @@ if __name__ == "__main__":
                         temp = instancia.replace(".tsp", "")
                         str_nome_teste = f"{temp}-{operador_crz}-sequencial"
 
-                        str_execucao_linux = f"./tsp_sequencial.exe instancias/{instancia} {operador_crz} {tam_pop} {chance_mut} {qtd_parada}"
+                        str_execucao_linux = f"./tsp_sequencial instancias/{instancia} {operador_crz} {tam_pop} {chance_mut} {qtd_parada}"
                         
                         # Alpha
-                        if operador_crz == 1:
+                        if operador_crz == "1":
                             str_execucao_linux = str_execucao_linux + " 0.01"
                         
                         print(f"Realizando teste com os seguintes parametros: {str_execucao_linux}")
