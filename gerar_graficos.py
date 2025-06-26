@@ -6,45 +6,60 @@ output_folder = "graficos"
 
 os.makedirs(output_folder, exist_ok=True)
 
-def ler_dados_arquivo(arquivo: str) -> tuple[list, list]:
+def ler_numero_iteracoes(arquivo: str) -> int:
     # Retorna a lista iteracao, tempo
-    lista_tempo = []
+    # lista_tempo = []
     lista_iteracao = []
 
     with open(os.path.join(folder_path, arquivo), "r+") as arquivo:
         for linha in arquivo:
             partes = linha.split()
             lista_iteracao.append(int(partes[0]))
-            lista_tempo.append(float(partes[1]))
+            # lista_tempo.append(float(partes[1]))
 
-    return (lista_iteracao, lista_tempo)
+    return lista_iteracao[-1]
+
+def ler_tempo_real(arquivo: str) -> float:
+    with open(os.path.join(folder_path, arquivo), "r+") as arquivo:
+        for linha in arquivo:
+            partes = linha.split()
+            if partes[0] == "real":
+                return float(partes[1])
                                   
 
 def plotar_instancia_velocidade(instancia: str, algoritmo_constr: int):
-    listas_x_threads_tempo = [None] * 8 # lista de listas
-    listas_y_threads_iteracoes = [None] * 8
-    lista_x_sequencial_tempo = []
-    lista_y_sequencial_iteracoes = []
+    lista_x_tempo_threads = [0] * 8 
+    lista_y_iteracoes_threads = [0] * 8
+    x_tempo_sequencial = 0
+    y_iteracoes_sequencial = 0
 
     if instancia.endswith(".tsp"):
         instancia = instancia.replace(".tsp", "")
 
-    for arq in os.listdir(folder_path):
-        if arq.endswith(".txt"):
-            if arq.startswith(f"{instancia}-{str(algoritmo_constr)}"):
-                if arq.endswith("sequencial.txt"):
-                    lista_y_sequencial_iteracoes, lista_x_sequencial_tempo = ler_dados_arquivo(arq)
-                else:
-                    indice = int(((arq.replace(".txt", "")).split("-"))[2])
-                    print(indice)
-                    print(arq)
-                    listas_y_threads_iteracoes[indice-1], listas_x_threads_tempo[indice-1] = ler_dados_arquivo(arq)
+    str_inst = f"{instancia}-{algoritmo_constr}"
+    for i in range(8):
+        lista_y_iteracoes_threads[i] = ler_numero_iteracoes(f'{str_inst}-{i+1}.txt')
+        lista_x_tempo_threads[i] = ler_tempo_real(f'tempo-{str_inst}-{i+1}.txt')
+    
+    x_tempo_sequencial = ler_tempo_real(f'tempo-{str_inst}-sequencial.txt')
+    y_iteracoes_sequencial = ler_numero_iteracoes(f'{str_inst}-sequencial.txt')
+
+#    for arq in os.listdir(folder_path):
+#        if arq.endswith(".txt"):
+#            if arq.startswith(f"{instancia}-{str(algoritmo_constr)}"):
+#                if arq.endswith("sequencial.txt"):
+#                    lista_y_sequencial_iteracoes, lista_x_sequencial_tempo = ler_dados_arquivo(arq)
+#                else:
+#                    indice = int(((arq.replace(".txt", "")).split("-"))[2])
+#                    print(indice)
+#                    print(arq)
+#                    listas_y_threads_iteracoes[indice-1], listas_x_threads_tempo[indice-1] = ler_dados_arquivo(arq)
 
     plt.figure()
     for i in range(8):
-        plt.plot(listas_x_threads_tempo[i], listas_y_threads_iteracoes[i], label=f"{instancia}: {i+1} thread(s)")
+        plt.plot([0,lista_x_tempo_threads[i]], [0,lista_y_iteracoes_threads[i]], label=f"{instancia}: {i+1} thread(s)")
     
-    plt.plot(lista_x_sequencial_tempo, lista_y_sequencial_iteracoes, label=f"{instancia}: sequencial")
+    plt.plot([0,x_tempo_sequencial], [0,y_iteracoes_sequencial], label=f"{instancia}: sequencial")
     
     plt.title(f"Velocidades da instância {instancia} com algoritmo {algoritmo_constr}")
 
@@ -58,34 +73,34 @@ def plotar_instancia_velocidade(instancia: str, algoritmo_constr: int):
     plt.close()
 
 
-def plotar_tempo_construcao(instancia: str, algoritmo_constr: int):
+# def plotar_tempo_construcao(instancia: str, algoritmo_constr: int):
 
-    categorias = ["Sequencial", "1", "2", "3", "4", "5", "6", "7", "8"]
-    valores = []
+#     categorias = ["Sequencial", "1", "2", "3", "4", "5", "6", "7", "8"]
+#     valores = []
 
-    with open(os.path.join(folder_path, f"constr-{instancia}-{algoritmo_constr}-sequencial.txt")) as arq:
-        valores.append(float(arq.read()))
+#     with open(os.path.join(folder_path, f"constr-{instancia}-{algoritmo_constr}-sequencial.txt")) as arq:
+#         valores.append(float(arq.read()))
 
-    for i in range(8):
-        with open(os.path.join(folder_path, f"constr-{instancia}-{algoritmo_constr}-{i+1}.txt")) as arq:
-            valores.append(float(arq.read()))
+#     for i in range(8):
+#         with open(os.path.join(folder_path, f"constr-{instancia}-{algoritmo_constr}-{i+1}.txt")) as arq:
+#             valores.append(float(arq.read()))
 
-    print(categorias)
+#     print(categorias)
 
-    print(valores)
+#     print(valores)
 
-    plt.bar(categorias, valores)
+#     plt.bar(categorias, valores)
 
-    plt.title(f"Tempo gasto na contrução (s): {instancia}")
+#     plt.title(f"Tempo gasto na contrução (s): {instancia}")
 
-    plt.xlabel("Número de threads")
-    plt.ylabel("Tempo gasto (s)")
-    # plt.grid(True)
-    # plt.legend()
+#     plt.xlabel("Número de threads")
+#     plt.ylabel("Tempo gasto (s)")
+#     # plt.grid(True)
+#     # plt.legend()
 
-    arquivo_saida = os.path.join(output_folder, f"constr-{instancia}-{algoritmo_constr}.png")
-    plt.savefig(arquivo_saida)
-    plt.close()
+#     arquivo_saida = os.path.join(output_folder, f"constr-{instancia}-{algoritmo_constr}.png")
+#     plt.savefig(arquivo_saida)
+#     plt.close()
 
 
 if __name__ == "__main__":
@@ -93,7 +108,7 @@ if __name__ == "__main__":
     algo = int(input("Insira o alg. de constr. (0 ou 1):\n>> "))
 
     plotar_instancia_velocidade(instancia, algo)
-    plotar_tempo_construcao(instancia, algo)
+    # plotar_tempo_construcao(instancia, algo)
 #         plt.xlabel("Iterações")
 #         plt.ylabel("Custo")
 #         plt.grid(True)
