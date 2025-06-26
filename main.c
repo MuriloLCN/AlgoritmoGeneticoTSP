@@ -24,31 +24,16 @@ typedef struct populacao
     float *avaliacao;
 }populacao;
 
-// typedef struct packVizinhoMaisProximo {
-//     int* vetor;
-//     int custo;
-// }packVizinhoMaisProximo;
+typedef enum {NO_OP, CRUZAMENTO, CALC_CUSTO, DOIS_OPT} operacao;
 
-typedef struct packVizinhoMaisProximo {
-    int **vetor;
-    float *custo;
-    int inicio, fim;
-}packVizinhoMaisProximo;
+typedef struct packParametrosThreadWorker{
+    int indiceThread;
+}packParametrosThreadWorker;
 
 typedef struct packCruzamento {
     int inicio, fim, *paisSelecionados;
     populacao *pop, *filhosGerados;
 }packCruzamento;
-
-typedef struct packCalculaCustoRota {
-    populacao* pop;
-    int inicio, fim;
-}packCalculaCustoRota;
-
-typedef struct packDoisOpt {
-    populacao* pop;
-    int inicio, fim;
-}packDoisOpt;
 
 int numeroDePaisSelecionadosParaCruzamento;
 float chanceMutacao;
@@ -64,10 +49,10 @@ clock_t inicioMelhoramento;
 clock_t inicioExecucao;
 float alpha;
 
-void *vizinhoMaisProximo(void* ptr);
-void* calculaCustoRota(void* ptr);
 float calculaDistancia(coordenada* c1, coordenada* c2);
 void copiarRota(int* fonte, int* destino);
+void vizinhoMaisProximo(int* rota, float* custo);
+float calculaCustoRota(int* rota);
 
 int randMelhorado()
 {
@@ -92,65 +77,16 @@ populacao* gerarPopulacaoInicial(int tamanho)
     nova_populacao->avaliacao = malloc(sizeof(float) * tamanho);
     nova_populacao->cromossomo = malloc(sizeof(int*) * tamanho);
 
-    int intervalo = tamanho / numeroThreads;
-    int resto = tamanho - (intervalo * numeroThreads);
-
-    // float custo;
+    float custo;
     // loop que inicializa cada cromossomo
-
-    pthread_t threadPool[numeroThreads];
-    packVizinhoMaisProximo packPool[numeroThreads];
-
     for (int i = 0; i < tamanho; i++)
     {
-        // printf("\nCriando packPool (%d de %d)", i, tamanho);
+        // nova_populacao->avaliacao[i] = 0.0;
+        printf("\nGerando cromossomo %d de %d", i+1, tamanho);
         nova_populacao->cromossomo[i] = malloc(sizeof(int) * (dimensao + 1));
-        nova_populacao->avaliacao[i] = 0.0;
-        // packPool[i].vetor = nova_populacao->cromossomo[i];
-        // packPool[i].custo = 0;
+        vizinhoMaisProximo(nova_populacao->cromossomo[i], &custo);
+        nova_populacao->avaliacao[i] = custo;
     }
-
-    int ultimoIndice = 0;
-    // distribui a criação dos cromossomos entre as threads em intervalos
-    for (int i = 0; i < numeroThreads; i++)
-    {
-        packPool[i].vetor = nova_populacao->cromossomo;
-        packPool[i].custo = nova_populacao->avaliacao;
-
-        packPool[i].inicio = ultimoIndice;
-        packPool[i].fim = ultimoIndice + intervalo - 1;
-        if (resto) // verifica se ha resto a ser dividido entre as threads (evita que a ultima thread fique sobrecarregada com mais trabalho)
-        {
-            packPool[i].fim++;
-            resto--;
-        }
-
-        printf("\nThread %d: Gerando cromossomos do índice %d até %d", i, packPool[i].inicio, packPool[i].fim);
-        ultimoIndice = packPool[i].fim + 1;
-    }
-
-    for (int i = 0; i < numeroThreads; i++)
-    {
-        // printf("\nIniciando threads (%d de %d)", i, tamanho);
-        pthread_create(&(threadPool[i]), NULL, vizinhoMaisProximo, (void*)&(packPool[i]));
-    }
-
-    for (int i = 0; i < numeroThreads; i++)
-    {
-        // printf("\nJoining threads (%d de %d)", i, tamanho);
-        pthread_join(threadPool[i], NULL);
-
-        // nova_populacao->avaliacao[i] = packPool[i].custo;
-    }
-
-    // for (int i = 0; i < tamanho; i++)
-    // {
-    //     // nova_populacao->avaliacao[i] = 0.0;
-    //     printf("\nGerando cromossomo %d de %d", i+1, tamanho);
-    //     nova_populacao->cromossomo[i] = malloc(sizeof(int) * (dimensao + 1));
-    //     vizinhoMaisProximo(nova_populacao->cromossomo[i], &custo);
-    //     nova_populacao->avaliacao[i] = custo;
-    // }
     
     return nova_populacao;
 }
@@ -173,42 +109,10 @@ void ordenaPopulacao(populacao *pop) {
 
 void avaliarCromossomos (populacao* populacao_atual)
 {
-    pthread_t threadPool[numeroThreads];
-    packCalculaCustoRota packPool[numeroThreads];
-
-    int intervalo = populacao_atual->tamanho / numeroThreads;
-    int resto = populacao_atual->tamanho - (intervalo * numeroThreads);
-
-    int ultimoElemento = -1;
-
-    for (int i = 0; i < numeroThreads; i++)
+    for (int i = 0; i < populacao_atual->tamanho; i++)
     {
-        packPool[i].pop = populacao_atual;
-
-        packPool[i].inicio = ultimoElemento + 1;
-        packPool[i].fim = packPool[i].inicio + intervalo;
-
-        if (resto)
-        {
-            packPool[i].fim += 1;
-            resto -= 1;
-        }
+        populacao_atual->avaliacao[i] = calculaCustoRota(populacao_atual->cromossomo[i]);
     }
-
-    for (int i = 0; i < numeroThreads; i++)
-    {
-        pthread_create(&(threadPool[i]), NULL, calculaCustoRota, (void*)&(packPool[i]));
-    }
-
-    for (int i = 0; i < numeroThreads; i++)
-    {
-        pthread_join(threadPool[i], NULL);
-    }
-
-    // for (int i = 0; i < numeroThreads; i++)
-    // {
-    //     populacao_atual->avaliacao[i] = packPool[i].custo;
-    // }
 }
 
 booleano pertence_regiao(float lx, float ly, coordenada coordenadaInicial, coordenada atual)
@@ -441,75 +345,62 @@ float calculaDistancia(coordenada* c1, coordenada* c2)
     return sqrt(dx*dx + dy*dy);
 }
 
-void *vizinhoMaisProximo(void* ptr)
+void vizinhoMaisProximo(int* rota, float* custo)
 {
-    packVizinhoMaisProximo* pack;
-    pack = (packVizinhoMaisProximo*)ptr;
-    int** rota = pack->vetor;
-    float* custo = pack->custo;
-    // int atual = (int)randMelhorado() % dimensao;
-    // int inicial = atual;
-    int atual, inicial, indiceCromossomoAtual, indiceRota;
+    int atual = (int)randMelhorado() % dimensao;
+    int inicial = atual;
 
-    // int indiceRota = 0;
+    int indiceRota = 0;
 
     booleano visitados[dimensao];
 
-    for (indiceCromossomoAtual = pack->inicio; indiceCromossomoAtual <= pack->fim; indiceCromossomoAtual++)
+    for (int i = 0; i < dimensao; i++)
     {
-        atual = (int)randMelhorado() % dimensao;
-        inicial = atual;
-        indiceRota = 0;
+        visitados[i] = False;
+    }
 
-        for (int i = 0; i < dimensao; i++)
+    visitados[atual] = True;
+    rota[indiceRota] = atual;
+    indiceRota++;
+
+    float distanciaTotal = 0.0;
+
+    for (int passo = 1; passo < dimensao; passo++)
+    {
+        float menorDistancia = INFINITY;
+        int prox = -1;
+
+        for (int j = 0; j < dimensao; j++)
         {
-            visitados[i] = False;
-        }
-
-        visitados[atual] = True;
-        rota[indiceCromossomoAtual][indiceRota] = atual;
-        indiceRota++;
-
-        float distanciaTotal = 0.0;
-
-        for (int passo = 1; passo < dimensao; passo++)
-        {
-            float menorDistancia = INFINITY;
-            int prox = -1;
-
-            for (int j = 0; j < dimensao; j++)
+            if (visitados[j] == False)
             {
-                if (visitados[j] == False)
+                float distancia = calculaDistancia(&listaDeVertices[atual], &listaDeVertices[j]);
+                if (distancia < menorDistancia)
                 {
-                    float distancia = calculaDistancia(&listaDeVertices[atual], &listaDeVertices[j]);
-                    if (distancia < menorDistancia)
-                    {
-                        menorDistancia = distancia;
-                        prox = j;
-                    }
+                    menorDistancia = distancia;
+                    prox = j;
                 }
             }
-
-            if (prox == -1)
-            {
-                printf("\nErro: Nenhum vértice restante para visitar.");
-                exit(1);
-            }
-
-            visitados[prox] = 1;
-            distanciaTotal += menorDistancia;
-            atual = prox;
-
-            rota[indiceCromossomoAtual][indiceRota] = atual;
-            indiceRota++;
         }
 
-        rota[indiceCromossomoAtual][indiceRota] = inicial;
-        distanciaTotal += calculaDistancia(&listaDeVertices[atual], &listaDeVertices[inicial]);
-        pack->custo[indiceCromossomoAtual] = distanciaTotal;
-    }
-        // printf("\nDistancia total percorrida: %2f\n", distanciaTotal);
+        if (prox == -1)
+        {
+            printf("\nErro: Nenhum vértice restante para visitar.");
+            return;
+        }
 
+        visitados[prox] = 1;
+        distanciaTotal += menorDistancia;
+        atual = prox;
+
+        rota[indiceRota] = atual;
+        indiceRota++;
+    }
+
+    rota[indiceRota] = inicial;
+    distanciaTotal += calculaDistancia(&listaDeVertices[atual], &listaDeVertices[inicial]);
+    *custo = distanciaTotal;
+    // printf("\nDistancia total percorrida: %2f\n", distanciaTotal);
 }
 
 void troca(int* rota, int i, int j)
@@ -541,24 +432,16 @@ void exportaResultados(int* rotaFinal, float custoTotal, char* nomeArquivo, floa
     fclose(arquivoDeSaida);
 }
 
-void* calculaCustoRota(void* ptr)
+float calculaCustoRota(int* rota)
 {
-    packCalculaCustoRota* pack;
-    pack = (packCalculaCustoRota*) ptr;
-    populacao* pop = pack->pop;
+    float custoTotal = 0;
 
-    for (int j = pack->inicio; j < pack->fim; j++)
+    for(int i = 0; i < dimensao; i++)
     {
-        float custoTotal = 0;
-        int* rota = pop->cromossomo[j];
-
-        for(int i = 0; i < dimensao; i++)
-        {
-            custoTotal += calculaDistancia(&listaDeVertices[rota[i]], &listaDeVertices[rota[i+1]]);
-        }
-
-        pop->avaliacao[j] = custoTotal;
+        custoTotal += calculaDistancia(&listaDeVertices[rota[i]], &listaDeVertices[rota[i+1]]);
     }
+
+    return custoTotal;
 }
 
 void trocar_pontas(int* rotaFinal, int i, int j)
@@ -575,7 +458,7 @@ void trocar_pontas(int* rotaFinal, int i, int j)
     }
 }
 
-void* doisOpt(void* ptr)
+void doisOpt(int inicio, int fim, populacao* pop)
 {
     /*
         Realiza a heurística de melhoramento 2-opt aplicado ao first improvement. Apenas um passo.
@@ -586,13 +469,6 @@ void* doisOpt(void* ptr)
             pop: A população atual
             inicio, fim: A faixa da população p/ aplicar o 2-opt
     */
-    
-    packDoisOpt* pack;
-    pack = (packDoisOpt*) ptr;
-
-    populacao* pop = pack->pop;
-    int inicio = pack->inicio;
-    int fim = pack->fim;
 
     for (int k = inicio; k < fim; k++) {
         int n = dimensao;
@@ -770,112 +646,84 @@ void selecionarCromossomos(populacao* pop, int* paisSelecionados) {
     // }
 }
 
-void *wrapperOperadorCruzamento (void* ptr)
+void wrapperOperadorCruzamento (int inicio, int fim, populacao* pop, int *paisSelecionados, populacao* filhosGerados)
 {
-    packCruzamento *pack;
-    pack = (packCruzamento*) ptr;
-
-    for (int i = pack->inicio; i <= pack->fim; i++)
+    if (inicio == -1 || fim == -1)
     {
-        int indicePai1 = pack->paisSelecionados[2 * i];
-        int indicePai2 = pack->paisSelecionados[(2 * i) + 1];
+        return;
+    }
+    for (int i = inicio; i <= fim; i++)
+    {
+        int indicePai1 = paisSelecionados[2 * i];
+        int indicePai2 = paisSelecionados[(2 * i) + 1];
 
         if (algoritmoCruzamento == 0)
         {
-            zx(pack->pop->cromossomo[indicePai1], pack->pop->cromossomo[indicePai2], pack->filhosGerados->cromossomo[i]);
+            zx(pop->cromossomo[indicePai1], pop->cromossomo[indicePai2], filhosGerados->cromossomo[i]);
         }
         else
         {   
-            exx_crossover(pack->pop->cromossomo[indicePai1], pack->pop->cromossomo[indicePai2], pack->filhosGerados->cromossomo[i]);
+            exx_crossover(pop->cromossomo[indicePai1], pop->cromossomo[indicePai2], filhosGerados->cromossomo[i]);
         }
 
     }
 }
 
-void cruzarCromossomos(populacao* pop, int* paisSelecionados, populacao* filhosGerados)
-{
-    /*
-        Cruza os pais selecionados da população para gerar numeroDePaisSelecionadosParaCruzamento/2 filhos.
-    */
+// void cruzarCromossomos(populacao* pop, int* paisSelecionados, populacao* filhosGerados)
+// {
+//     /*
+//         Cruza os pais selecionados da população para gerar numeroDePaisSelecionadosParaCruzamento/2 filhos.
+//     */
     
-    // TODO: paralelizar essa função de cruzamento
-    // OBS.: não sei se paralelizar rotinas dentro dos operadores é vantajoso, devido ao overhead de criação de threads. 
-    //       Nesse sentido, talvez seja melhor criar uma thread para um determinado intervalo de pais selecionados,
-    //       seguindo a mesma ideia de vizinho mais próximo.
+//     int numeroDeThreadsUsadas = numeroThreads;
+//     if ((numeroDePaisSelecionadosParaCruzamento / 2) < numeroThreads)
+//     {
+//         numeroDeThreadsUsadas = numeroDePaisSelecionadosParaCruzamento;
+//     }
 
-    // caso o numero de threads definido pelo usuário seja maior que o número de pais selecionados,
-    // reduz o número de threads usadas para o número de pais selecionados
-    int numeroDeThreadsUsadas = numeroThreads;
-    if ((numeroDePaisSelecionadosParaCruzamento / 2) < numeroThreads)
-    {
-        numeroDeThreadsUsadas = numeroDePaisSelecionadosParaCruzamento;
-    }
+//     int intervalo = ((numeroDePaisSelecionadosParaCruzamento / 2) / numeroDeThreadsUsadas) - 1;
+//     int resto = (numeroDePaisSelecionadosParaCruzamento / 2)  % numeroDeThreadsUsadas;
 
-    // se vou fazer dois cruzamentos por thread, o numero do intervalo é 1, se forem feitos três cruzamentos por thread, o intervalo é 2, e assim por diante.
-    int intervalo = ((numeroDePaisSelecionadosParaCruzamento / 2) / numeroDeThreadsUsadas) - 1;
-    int resto = (numeroDePaisSelecionadosParaCruzamento / 2)  % numeroDeThreadsUsadas;
+//     // printf("\nnumeroDePaisSelecionadosParaCruzamento: %d", numeroDePaisSelecionadosParaCruzamento);
+//     // printf("\numeroDeThreadsUsadas: %d", numeroDeThreadsUsadas);
+//     // printf("\nintervalo: %d", intervalo);
+//     // printf("\nresto: %d", resto);
 
-    // printf("\nnumeroDePaisSelecionadosParaCruzamento: %d", numeroDePaisSelecionadosParaCruzamento);
-    // printf("\numeroDeThreadsUsadas: %d", numeroDeThreadsUsadas);
-    // printf("\nintervalo: %d", intervalo);
-    // printf("\nresto: %d", resto);
+//     pthread_t threadPool[numeroDeThreadsUsadas];
+//     packCruzamento packPool[numeroDeThreadsUsadas];
+//     int threadRet[numeroDeThreadsUsadas];
 
-    pthread_t threadPool[numeroDeThreadsUsadas];
-    packCruzamento packPool[numeroDeThreadsUsadas];
-    int threadRet[numeroDeThreadsUsadas];
+//     int ultimoIndice = -1;
+//     for (int i = 0; i < numeroDeThreadsUsadas; i++)
+//     {   
+//         // inicialização básica, apenas para os pacotes apontarem para os mesmos endereços de memória
+//         packPool[i].pop = pop;
+//         packPool[i].paisSelecionados = paisSelecionados;
+//         packPool[i].filhosGerados = filhosGerados;
 
-    int ultimoIndice = -1;
-    for (int i = 0; i < numeroDeThreadsUsadas; i++)
-    {   
-        // inicialização básica, apenas para os pacotes apontarem para os mesmos endereços de memória
-        packPool[i].pop = pop;
-        packPool[i].paisSelecionados = paisSelecionados;
-        packPool[i].filhosGerados = filhosGerados;
+//         packPool[i].inicio = ultimoIndice + 1;
+//         packPool[i].fim = packPool[i].inicio + intervalo;
+//         if (resto)
+//         {
+//             packPool[i].fim++;
+//             resto--;
+//         }
 
-        packPool[i].inicio = ultimoIndice + 1;
-        packPool[i].fim = packPool[i].inicio + intervalo;
-        if (resto)
-        {
-            packPool[i].fim++;
-            resto--;
-        }
+//         ultimoIndice = packPool[i].fim;  
+//     }
 
-        ultimoIndice = packPool[i].fim;  
-    }
-
-    // disparando as threads
-    for (int i = 0; i < numeroDeThreadsUsadas; i++)
-    {
-        threadRet[i] = pthread_create(&(threadPool[i]), NULL, wrapperOperadorCruzamento, (void*) &(packPool[i]));
-    }
+//     // disparando as threads
+//     for (int i = 0; i < numeroDeThreadsUsadas; i++)
+//     {
+//         threadRet[i] = pthread_create(&(threadPool[i]), NULL, wrapperOperadorCruzamento, (void*) &(packPool[i]));
+//     }
     
-    for (int i = 0; i < numeroDeThreadsUsadas; i++)
-    {
-        pthread_join(threadPool[i], NULL);
-    }
+//     for (int i = 0; i < numeroDeThreadsUsadas; i++)
+//     {
+//         pthread_join(threadPool[i], NULL);
+//     }
 
-    // for (int i = 0; i < numeroDePaisSelecionadosParaCruzamento / 2; i++)
-    // {
-    //     int indicePai1 = paisSelecionados[2 * i];
-    //     int indicePai2 = paisSelecionados[(2 * i) + 1];
-
-
-    //     if (algoritmoCruzamento == 0)
-    //     {
-    //         zx(pop->cromossomo[indicePai1], pop->cromossomo[indicePai2], filhosGerados->cromossomo[i]);
-    //     }
-    //     else
-    //     {   
-    //         exx_crossover(pop->cromossomo[indicePai1], pop->cromossomo[indicePai2], filhosGerados->cromossomo[i]);
-    //     }
-
-        // printf("\nFilho gerado %d: ", i);
-        // for (int j = 0; j <= dimensao; j++)
-        // {
-        //     printf("%d ", filhosGerados->cromossomo[i][j]);
-        // }
-    // }
-}
+// }
 
 void printarPopulacao(populacao* pop)
 {
@@ -941,6 +789,46 @@ void calculaCustoMedioPopulacao(populacao* pop, float* media, float* custoPiorIn
         }
     }
     *media = (soma / pop->tamanho);
+}
+
+booleano* flagsAcabaramProcessamento;
+booleano flagTerminarThreads = False;
+
+operacao statusGlobalOperacao = NO_OP;
+int* inicios_doisopt;
+int* fins_doisopt;
+int* inicios_cruzamento;
+int* fins_cruzamento;
+
+populacao *popThread, *filhosGeradosThread;
+int* paisSelecionadosThread;
+
+void *wrapperThreads(void* ptr)
+{
+    packParametrosThreadWorker* pack;
+    pack = (packParametrosThreadWorker*) ptr;
+    int indiceThread = pack->indiceThread;
+    
+    while (flagTerminarThreads != True)
+    {
+        if (flagsAcabaramProcessamento[indiceThread] != True)
+        {
+            switch (statusGlobalOperacao)
+            {
+                case NO_OP:
+                    break;
+                case CRUZAMENTO:
+                    wrapperOperadorCruzamento(inicios_cruzamento[indiceThread], fins_cruzamento[indiceThread], popThread, paisSelecionadosThread, filhosGeradosThread);
+                    break;
+                case DOIS_OPT:
+                    doisOpt(inicios_doisopt[indiceThread], fins_doisopt[indiceThread], popThread);
+                    break;
+                default:
+                break;
+            }
+            flagsAcabaramProcessamento[indiceThread] = True;
+        }
+    }
 }
 
 int main(int argc, char *argv[]) {
@@ -1092,6 +980,8 @@ int main(int argc, char *argv[]) {
     novosIndividuos->avaliacao = malloc(sizeof(float) * novosIndividuos->tamanho);
     novosIndividuos->cromossomo = malloc(sizeof(int*) * novosIndividuos->tamanho);
 
+    popThread = pop;
+
     printf("\nnovosIndividuos->tamanho: %d\n", novosIndividuos->tamanho);
     
     for (int i = 0; i < novosIndividuos->tamanho; i++)
@@ -1113,12 +1003,75 @@ int main(int argc, char *argv[]) {
             indiceMelhorRotaConhecida = i;
         }
     }
+    
 
     copiarRota(pop->cromossomo[indiceMelhorRotaConhecida], melhorRotaConhecida);
 
     printf("\nMelhor rota conhecida: %f, indice: %d", custoMelhorRotaConhecida, indiceMelhorRotaConhecida);
 
     printf("\nMemoria alocada!");
+
+    flagsAcabaramProcessamento = malloc(sizeof(booleano) * numeroThreads);
+    inicios_doisopt = malloc(sizeof(int) * numeroThreads);
+    fins_doisopt = malloc(sizeof(int) * numeroThreads);
+
+    // Setando índices cruzamento
+    int numeroDeThreadsUsadas = numeroThreads;
+    if ((numeroDePaisSelecionadosParaCruzamento / 2) < numeroThreads)
+    {
+        numeroDeThreadsUsadas = numeroDePaisSelecionadosParaCruzamento;
+    }
+
+    inicios_cruzamento = malloc(sizeof(int) * numeroDeThreadsUsadas);
+    fins_cruzamento = malloc(sizeof(int) * numeroDeThreadsUsadas);
+
+    int intervalo = ((numeroDePaisSelecionadosParaCruzamento / 2) / numeroDeThreadsUsadas) - 1;
+    int resto = (numeroDePaisSelecionadosParaCruzamento / 2)  % numeroDeThreadsUsadas;
+
+    int ultimoIndice = -1;
+    for (int i = 0; i < numeroDeThreadsUsadas; i++)
+    {   
+        inicios_cruzamento[i] = ultimoIndice+1;
+        fins_cruzamento[i] = inicios_cruzamento[i] + intervalo;
+
+        if (resto)
+        {
+            fins_cruzamento[i] += 1;
+            resto--;
+        }
+
+        ultimoIndice = fins_cruzamento[i];  
+    }
+
+    // Setando índices dois opt
+    intervalo = pop->tamanho / numeroThreads;
+    resto = pop->tamanho - (intervalo * numeroThreads);
+
+    pthread_t threadPool[numeroThreads];
+    packParametrosThreadWorker packPool[numeroThreads];
+
+    ultimoIndice = 0;
+    
+    for (int i = 0; i < numeroThreads; i++)
+    {
+        packPool[i].indiceThread = i;
+
+        inicios_doisopt[i] = ultimoIndice;
+        fins_doisopt[i] = ultimoIndice + intervalo - 1;
+    
+        if (resto) 
+        {
+            fins_doisopt[i] += 1;
+            resto--;
+        }
+
+        ultimoIndice = fins_doisopt[i] + 1;
+    }
+
+    for (int i = 0; i < numeroThreads; i++)
+    {
+        pthread_create(&(threadPool[i]), NULL, wrapperThreads, (void*)&(packPool[i]));
+    }
 
     inicioMelhoramento = clock();
     // printTimestamp(custoMelhorRotaConhecida);
@@ -1133,96 +1086,81 @@ int main(int argc, char *argv[]) {
 
     avaliarCromossomos(pop);
 
+    // Como são ponteiros, não importa deixá-los iniciados aqui
+    paisSelecionadosThread = paisSelecionados;
+    filhosGeradosThread = novosIndividuos;
+    popThread = pop;
+
     while (atingiuCriterioParada == False)
     {
         selecionarCromossomos(pop, paisSelecionados);
 
-        cruzarCromossomos(pop, paisSelecionados, novosIndividuos);
+        // cruzarCromossomos(pop, paisSelecionados, novosIndividuos);
+        statusGlobalOperacao = CRUZAMENTO;
+        for (int i = 0; i < numeroThreads; i++)
+        {
+            flagsAcabaramProcessamento[i] = False;
+        }
+
+        booleano flagTerminouCruzamento = False;
+        
+        while (flagTerminouCruzamento != True)
+        {
+            booleano flagTodasProntas = True;
+            for (int i = 0; i < numeroThreads; i++)
+            {
+                if (flagsAcabaramProcessamento[i] == False)
+                {
+                    flagTodasProntas = False;
+                }
+            }
+            if (flagTodasProntas == True)
+            {
+                flagTerminouCruzamento = True;
+                statusGlobalOperacao = NO_OP;
+                break;
+            }
+        }
 
         for (int i = 0; i < pop->tamanho; i++)
         {
             mutarCromossomo(pop, i);
         }
 
-        int intervalo = pop->tamanho / numeroThreads;
-        int resto = pop->tamanho - (intervalo * numeroThreads);
-
-        pthread_t threadPool[numeroThreads];
-        packDoisOpt packPool[numeroThreads];
-
-        int ultimoIndice = 0;
-    
+        statusGlobalOperacao = DOIS_OPT;
         for (int i = 0; i < numeroThreads; i++)
         {
-            packPool[i].pop = pop;
-
-            packPool[i].inicio = ultimoIndice;
-            packPool[i].fim = ultimoIndice + intervalo - 1;
-
-            if (resto) 
-            {
-                packPool[i].fim++;
-                resto--;
-            }
-
-            ultimoIndice = packPool[i].fim + 1;
+            flagsAcabaramProcessamento[i] = False;
         }
 
-        for (int i = 0; i < numeroThreads; i++)
-        {
-            pthread_create(&(threadPool[i]), NULL, doisOpt, (void*)&(packPool[i]));
-        }
-
-        for (int i = 0; i < numeroThreads; i++)
-        {
-            pthread_join(threadPool[i], NULL);
-        }
+        booleano flagTerminouDoisOpt = False;
         
-        // pthread_t threadPoolDoisOpt[pop->tamanho];
-        // packDoisOpt packPoolDoisOpt[pop->tamanho];
+        while (flagTerminouDoisOpt != True)
+        {
+            booleano flagTodasProntas = True;
+            for (int i = 0; i < numeroThreads; i++)
+            {
+                if (flagsAcabaramProcessamento[i] == False)
+                {
+                    flagTodasProntas = False;
+                }
+            }
+            if (flagTodasProntas == True)
+            {
+                flagTerminouDoisOpt = True;
+                statusGlobalOperacao = NO_OP;
+                break;
+            }
+        }
 
-        // for (int i = 0; i < pop->tamanho; i++)
-        // {
-        //     packPoolDoisOpt[i].pop = pop;
-        //     packPoolDoisOpt[i].k = i;
-        // }
-
-        // for (int i = 0; i < pop->tamanho; i++)
-        // {
-        //     pthread_create(&(threadPoolDoisOpt[i]), NULL, doisOpt, (void*)&(packPoolDoisOpt[i]));
-        // }
-
-        // for (int i = 0; i < pop->tamanho; i++)
-        // {
-        //     pthread_join(threadPoolDoisOpt[i], NULL);
-        // }
-
-        // printf("\nMutou e fez 2opt com os cromossomos");
         avaliarCromossomos(novosIndividuos);
         
         ordenaPopulacao(pop);
         ordenaPopulacao(novosIndividuos);
 
-        // printf("\nPOP:");
-        // for (int i = 0; i < pop->tamanho; i++)
-        // {
-        //     printf("\nAvaliacao de pop[%d]: %f", i, pop->avaliacao[i]);
-        // }
-
-        // printf("\nFILHOS:");
-        // for (int i = 0; i < novosIndividuos->tamanho; i++)
-        // {
-        //     printf("\nAvaliacao de novosIndividuos[%d]: %f", i, novosIndividuos->avaliacao[i]);
-        // }
-
-        // printf("\nAtualizando populacao");
         atualizarPopulacao(pop, novosIndividuos);
 
-        // printf("\nPopulacao atualizada");
-
         avaliarCromossomos(pop);
-
-        // printf("\nAvaliou cromossomos");
 
         booleano flagMelhorouRota = False;
 
@@ -1291,6 +1229,11 @@ int main(int argc, char *argv[]) {
 
     free(pop->cromossomo);
     free(pop->avaliacao);
+
+    free(inicios_cruzamento);
+    free(inicios_doisopt);
+    free(fins_cruzamento);
+    free(fins_doisopt);
 
     free(probabilidades);
 
