@@ -2,7 +2,7 @@ import os
 import shutil
 import matplotlib.pyplot as plt
 
-algoritmo_cruzamento = ["0", "1"]
+algoritmo_cruzamento = ["1"]
 
 numero_individuos = ["50"]
 
@@ -14,9 +14,10 @@ numero_threads = ["1", "2", "3", "4", "5", "6", "7", "8"]
 
 # Aumentar p/ instâncias dps que estiver funcionando
 arquivos_de_teste = [
-                     "u574.tsp",
-                     "kroA100.tsp",
-                     "a280.tsp"
+					 "pr1002.tsp"
+                     #"u574.tsp",
+                     #"kroA100.tsp"
+                     #"a280.tsp"
 ]
 
 # timestamps_gerados = []  # Arquivos .txt gerados e salvos
@@ -43,7 +44,7 @@ if __name__ == "__main__":
                             temp = instancia.replace(".tsp", "")
                             str_nome_teste = f"{temp}-{operador_crz}-{num_threads}"
 
-                            str_execucao_linux = f"./tsp instancias/{instancia} {operador_crz} {tam_pop} {chance_mut} {qtd_parada} {num_threads}"
+                            str_execucao_linux = f"/usr/bin/time -p ./tsp instancias/{instancia} {operador_crz} {tam_pop} {chance_mut} {qtd_parada} {num_threads} 2> tempo.txt"
                             print(f"Realizando teste com os seguintes parametros: {str_execucao_linux}")
                             
                             if os.path.isfile(f"timestamps/{str_nome_teste}.txt"):
@@ -53,6 +54,7 @@ if __name__ == "__main__":
                                         
                             shutil.move('timestamp.txt', f'timestamps/{str_nome_teste}.txt')
                             shutil.move('tempo_construcao.txt', f'timestamps/constr-{str_nome_teste}.txt')
+                            shutil.move('tempo.txt', f'timestamps/tempo-{str_nome_teste}.txt')
 
                             num_executado_de_testes += 1
                             print(f"Teste numero {num_executado_de_testes} de {num_total_testes} feito [{round((num_executado_de_testes*100)/num_total_testes, 2)}%]")
@@ -72,7 +74,7 @@ if __name__ == "__main__":
                         temp = instancia.replace(".tsp", "")
                         str_nome_teste = f"{temp}-{operador_crz}-sequencial"
 
-                        str_execucao_linux = f"./tsp_sequencial instancias/{instancia} {operador_crz} {tam_pop} {chance_mut} {qtd_parada}"
+                        str_execucao_linux = f"/usr/bin/time -p ./tsp_sequencial instancias/{instancia} {operador_crz} {tam_pop} {chance_mut} {qtd_parada} 2> tempo.txt"
                         
                         # Alpha
                         if operador_crz == "1":
@@ -87,6 +89,7 @@ if __name__ == "__main__":
                                     
                         shutil.move('timestamp.txt', f'timestamps/{str_nome_teste}.txt')
                         shutil.move('tempo_construcao.txt', f'timestamps/constr-{str_nome_teste}.txt')
+                        shutil.move('tempo.txt', f'timestamps/tempo-{str_nome_teste}.txt')
 
                         num_executado_de_testes += 1
                         print(f"Teste numero {num_executado_de_testes} de {num_total_testes} feito [{round((num_executado_de_testes*100)/num_total_testes, 2)}%]")
