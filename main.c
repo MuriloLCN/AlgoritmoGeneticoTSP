@@ -1025,7 +1025,7 @@ int main(int argc, char *argv[]) {
     int numeroDeThreadsUsadas = numeroThreads;
     if ((numeroDePaisSelecionadosParaCruzamento / 2) < numeroThreads)
     {
-        numeroDeThreadsUsadas = numeroDePaisSelecionadosParaCruzamento;
+        numeroDeThreadsUsadas = numeroDePaisSelecionadosParaCruzamento / 2;
     }
 
     for (int i = 0; i < numeroThreads; i++)
