@@ -1022,8 +1022,14 @@ int main(int argc, char *argv[]) {
         numeroDeThreadsUsadas = numeroDePaisSelecionadosParaCruzamento;
     }
 
-    inicios_cruzamento = malloc(sizeof(int) * numeroDeThreadsUsadas);
-    fins_cruzamento = malloc(sizeof(int) * numeroDeThreadsUsadas);
+    inicios_cruzamento = malloc(sizeof(int) * numeroThreads);
+    fins_cruzamento = malloc(sizeof(int) * numeroThreads);
+
+    for (int i = 0; i < numeroThreads; i++)
+    {
+        inicios_cruzamento[i] = -1;
+        fins_cruzamento[i] = -1;
+    }
 
     int intervalo = ((numeroDePaisSelecionadosParaCruzamento / 2) / numeroDeThreadsUsadas) - 1;
     int resto = (numeroDePaisSelecionadosParaCruzamento / 2)  % numeroDeThreadsUsadas;
@@ -1218,6 +1224,11 @@ int main(int argc, char *argv[]) {
     printf("\nFinalizado! Tempo gasto: %lf", cpu_time_used);
     printf("\nRota calculada: %f\n", custoMelhorRotaConhecida);
 
+    flagTerminarThreads = True;
+    for (int i = 0; i < numeroThreads; i++)
+    {
+        pthread_join(threadPool[i], NULL);
+    }
     // exportaResultados(pop->cromossomo[indiceMelhorRotaConhecida], custoMelhorRotaConhecida, argv[1], cpu_time_used);
 
     free(listaDeVertices);
