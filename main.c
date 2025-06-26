@@ -24,16 +24,11 @@ typedef struct populacao
     float *avaliacao;
 }populacao;
 
-typedef enum {NO_OP, CRUZAMENTO, CALC_CUSTO, DOIS_OPT} operacao;
+typedef enum {NO_OP, EXECUCAO} operacao;// CRUZAMENTO, CALC_CUSTO, DOIS_OPT} operacao;
 
 typedef struct packParametrosThreadWorker{
     int indiceThread;
 }packParametrosThreadWorker;
-
-typedef struct packCruzamento {
-    int inicio, fim, *paisSelecionados;
-    populacao *pop, *filhosGerados;
-}packCruzamento;
 
 int numeroDePaisSelecionadosParaCruzamento;
 float chanceMutacao;
@@ -559,54 +554,57 @@ void exx_crossover(int* pai1, int* pai2, int* filho) {
     filho[tamanho - 1] = filho[0];
 }
 
-void mutarCromossomo(populacao* pop, int i)
+void mutarCromossomo(populacao* pop, int inicio, int fim)
 {
     /*
         Sorteia uma possível mutação no i-ésimo indivíduo da população
     */
 
-    float num_aleatorio = (float) rand() / RAND_MAX;
-
-    if (num_aleatorio < chanceMutacao)
+    for (int i = inicio; i < fim; i++)
     {
-        float taxaAlteracao = ((float) rand()) / RAND_MAX;
-        int numeroDeMutacoes = (int) (dimensao * chanceMutacao * taxaAlteracao) - 1;
+        float num_aleatorio = (float) rand() / RAND_MAX;
 
-        if (numeroDeMutacoes == 0)
+        if (num_aleatorio < chanceMutacao)
         {
-            numeroDeMutacoes = 1;
+            float taxaAlteracao = ((float) rand()) / RAND_MAX;
+            int numeroDeMutacoes = (int) (dimensao * chanceMutacao * taxaAlteracao) - 1;
+
+            if (numeroDeMutacoes == 0)
+            {
+                numeroDeMutacoes = 1;
+            }
+
+            for (int j = 0; j < numeroDeMutacoes; j++)
+            {
+                int v1 = (int) randMelhorado() % dimensao - 1;
+                int v2 = (int) randMelhorado() % dimensao - 1;
+
+                if (v1 == v2)
+                {
+                    continue;
+                }
+
+                if (v1 < 0)
+                {
+                    v1 = 0;
+                }
+
+                if (v2 < 0)
+                {
+                    v2 = 0;
+                }
+
+                if (v2 < v1)
+                {
+                    int temp = v1;
+                    v1 = v2;
+                    v2 = temp;
+                }
+
+                troca(pop->cromossomo[i], v1, v2);
+            }
+
         }
-
-        for (int j = 0; j < numeroDeMutacoes; j++)
-        {
-            int v1 = (int) randMelhorado() % dimensao - 1;
-            int v2 = (int) randMelhorado() % dimensao - 1;
-
-            if (v1 == v2)
-            {
-                continue;
-            }
-
-            if (v1 < 0)
-            {
-                v1 = 0;
-            }
-
-            if (v2 < 0)
-            {
-                v2 = 0;
-            }
-
-            if (v2 < v1)
-            {
-                int temp = v1;
-                v1 = v2;
-                v2 = temp;
-            }
-
-            troca(pop->cromossomo[i], v1, v2);
-        }
-
     }
 }
 
@@ -800,8 +798,8 @@ booleano* flagsAcabaramProcessamento;
 booleano flagTerminarThreads = False;
 
 operacao statusGlobalOperacao = NO_OP;
-int* inicios_doisopt;
-int* fins_doisopt;
+int* inicios_padrao;
+int* fins_padrao;
 int* inicios_cruzamento;
 int* fins_cruzamento;
 
@@ -822,12 +820,17 @@ void *wrapperThreads(void* ptr)
             {
                 case NO_OP:
                     break;
-                case CRUZAMENTO:
+                case EXECUCAO:
                     wrapperOperadorCruzamento(inicios_cruzamento[indiceThread], fins_cruzamento[indiceThread], popThread, paisSelecionadosThread, filhosGeradosThread);
+                    mutarCromossomo(popThread, inicios_padrao[indiceThread], fins_padrao[indiceThread]);
+                    doisOpt(inicios_padrao[indiceThread], fins_padrao[indiceThread], popThread);
                     break;
-                case DOIS_OPT:
-                    doisOpt(inicios_doisopt[indiceThread], fins_doisopt[indiceThread], popThread);
-                    break;
+                // case CRUZAMENTO:
+                //     wrapperOperadorCruzamento(inicios_cruzamento[indiceThread], fins_cruzamento[indiceThread], popThread, paisSelecionadosThread, filhosGeradosThread);
+                //     break;
+                // case DOIS_OPT:
+                //     doisOpt(inicios_padrao[indiceThread], fins_padrao[indiceThread], popThread);
+                //     break;
                 default:
                 break;
             }
@@ -1016,8 +1019,8 @@ int main(int argc, char *argv[]) {
     printf("\nMemoria alocada!");
 
     flagsAcabaramProcessamento = malloc(sizeof(booleano) * numeroThreads);
-    inicios_doisopt = malloc(sizeof(int) * numeroThreads);
-    fins_doisopt = malloc(sizeof(int) * numeroThreads);
+    inicios_padrao = malloc(sizeof(int) * numeroThreads);
+    fins_padrao = malloc(sizeof(int) * numeroThreads);
     inicios_cruzamento = malloc(sizeof(int) * numeroThreads);
     fins_cruzamento = malloc(sizeof(int) * numeroThreads);
 
@@ -1032,8 +1035,8 @@ int main(int argc, char *argv[]) {
     {
         inicios_cruzamento[i] = -1;
         fins_cruzamento[i] = -1;
-        inicios_doisopt[i] = -1;
-        fins_doisopt[i] = -1;
+        inicios_padrao[i] = -1;
+        fins_padrao[i] = -1;
     }
 
     int intervalo = ((numeroDePaisSelecionadosParaCruzamento / 2) / numeroDeThreadsUsadas) - 1;
@@ -1054,7 +1057,7 @@ int main(int argc, char *argv[]) {
         ultimoIndice = fins_cruzamento[i];  
     }
 
-    // Setando índices dois opt
+    // Setando índices dois opt e mutacao
     intervalo = pop->tamanho / numeroThreads;
     resto = pop->tamanho - (intervalo * numeroThreads);
 
@@ -1067,16 +1070,16 @@ int main(int argc, char *argv[]) {
     {
         packPool[i].indiceThread = i;
 
-        inicios_doisopt[i] = ultimoIndice;
-        fins_doisopt[i] = ultimoIndice + intervalo - 1;
+        inicios_padrao[i] = ultimoIndice;
+        fins_padrao[i] = ultimoIndice + intervalo - 1;
     
         if (resto) 
         {
-            fins_doisopt[i] += 1;
+            fins_padrao[i] += 1;
             resto--;
         }
 
-        ultimoIndice = fins_doisopt[i] + 1;
+        ultimoIndice = fins_padrao[i] + 1;
     }
 
     for (int i = 0; i < numeroThreads; i++)
@@ -1107,48 +1110,21 @@ int main(int argc, char *argv[]) {
         selecionarCromossomos(pop, paisSelecionados);
 
         // cruzarCromossomos(pop, paisSelecionados, novosIndividuos);
-        statusGlobalOperacao = CRUZAMENTO;
-        for (int i = 0; i < numeroDeThreadsUsadas; i++)
-        {
-            flagsAcabaramProcessamento[i] = False;
-        }
+        // mutarCromossomos
+        // doisOpt
 
-        booleano flagTerminouCruzamento = False;
-        
-        while (flagTerminouCruzamento != True)
-        {
-            booleano flagTodasProntas = True;
-            for (int i = 0; i < numeroThreads; i++)
-            {
-                if (flagsAcabaramProcessamento[i] == False)
-                {
-                    flagTodasProntas = False;
-                }
-            }
-            if (flagTodasProntas == True)
-            {
-                flagTerminouCruzamento = True;
-                statusGlobalOperacao = NO_OP;
-                break;
-            }
-        }
-
-        for (int i = 0; i < pop->tamanho; i++)
-        {
-            mutarCromossomo(pop, i);
-        }
-
-        statusGlobalOperacao = DOIS_OPT;
+        statusGlobalOperacao = EXECUCAO;
         for (int i = 0; i < numeroThreads; i++)
         {
             flagsAcabaramProcessamento[i] = False;
         }
 
-        booleano flagTerminouDoisOpt = False;
+        booleano flagTerminaramExecucao = False;
+        booleano flagTodasProntas = True;
         
-        while (flagTerminouDoisOpt != True)
+        while (flagTerminaramExecucao != True)
         {
-            booleano flagTodasProntas = True;
+            flagTodasProntas = True;
             for (int i = 0; i < numeroThreads; i++)
             {
                 if (flagsAcabaramProcessamento[i] == False)
@@ -1158,7 +1134,7 @@ int main(int argc, char *argv[]) {
             }
             if (flagTodasProntas == True)
             {
-                flagTerminouDoisOpt = True;
+                flagTerminaramExecucao = True;
                 statusGlobalOperacao = NO_OP;
                 break;
             }
@@ -1247,9 +1223,9 @@ int main(int argc, char *argv[]) {
     free(pop->avaliacao);
 
     free(inicios_cruzamento);
-    free(inicios_doisopt);
+    free(inicios_padrao);
     free(fins_cruzamento);
-    free(fins_doisopt);
+    free(fins_padrao);
 
     free(probabilidades);
 
