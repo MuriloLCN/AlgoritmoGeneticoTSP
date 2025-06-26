@@ -470,6 +470,11 @@ void doisOpt(int inicio, int fim, populacao* pop)
             inicio, fim: A faixa da população p/ aplicar o 2-opt
     */
 
+    if (inicio == -1 || fim == -1)
+    {
+        return;
+    }
+
     for (int k = inicio; k < fim; k++) {
         int n = dimensao;
         // int* rotaFinal = pop->cromossomo[k];
@@ -1004,7 +1009,6 @@ int main(int argc, char *argv[]) {
         }
     }
     
-
     copiarRota(pop->cromossomo[indiceMelhorRotaConhecida], melhorRotaConhecida);
 
     printf("\nMelhor rota conhecida: %f, indice: %d", custoMelhorRotaConhecida, indiceMelhorRotaConhecida);
@@ -1014,6 +1018,8 @@ int main(int argc, char *argv[]) {
     flagsAcabaramProcessamento = malloc(sizeof(booleano) * numeroThreads);
     inicios_doisopt = malloc(sizeof(int) * numeroThreads);
     fins_doisopt = malloc(sizeof(int) * numeroThreads);
+    inicios_cruzamento = malloc(sizeof(int) * numeroThreads);
+    fins_cruzamento = malloc(sizeof(int) * numeroThreads);
 
     // Setando índices cruzamento
     int numeroDeThreadsUsadas = numeroThreads;
@@ -1022,13 +1028,12 @@ int main(int argc, char *argv[]) {
         numeroDeThreadsUsadas = numeroDePaisSelecionadosParaCruzamento;
     }
 
-    inicios_cruzamento = malloc(sizeof(int) * numeroThreads);
-    fins_cruzamento = malloc(sizeof(int) * numeroThreads);
-
     for (int i = 0; i < numeroThreads; i++)
     {
         inicios_cruzamento[i] = -1;
         fins_cruzamento[i] = -1;
+        inicios_doisopt[i] = -1;
+        fins_doisopt[i] = -1;
     }
 
     int intervalo = ((numeroDePaisSelecionadosParaCruzamento / 2) / numeroDeThreadsUsadas) - 1;
@@ -1103,7 +1108,7 @@ int main(int argc, char *argv[]) {
 
         // cruzarCromossomos(pop, paisSelecionados, novosIndividuos);
         statusGlobalOperacao = CRUZAMENTO;
-        for (int i = 0; i < numeroThreads; i++)
+        for (int i = 0; i < numeroDeThreadsUsadas; i++)
         {
             flagsAcabaramProcessamento[i] = False;
         }
