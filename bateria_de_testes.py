@@ -78,7 +78,7 @@ if __name__ == "__main__":
                         
                         # Alpha
                         if operador_crz == "1":
-                            str_execucao_linux = str_execucao_linux + " 0.01"
+                            str_execucao_linux = f"/usr/bin/time -p ./tsp_sequencial instancias/{instancia} {operador_crz} {tam_pop} {chance_mut} {qtd_parada} 0.01 2> tempo.txt"
                         
                         print(f"Realizando teste com os seguintes parametros: {str_execucao_linux}")
                         
