@@ -10,11 +10,10 @@ chances_mutacao = ["0.01"]
 
 criterio_parada = ["500"]
 
-numero_threads = ["1", "2", "3", "4", "5", "6", "7", "8"]
+numero_threads = ["9", "10", "11"]
 
 # Aumentar p/ instâncias dps que estiver funcionando
 arquivos_de_teste = [
-                     "pr1002.tsp",
                      "pla85900.tsp"
 ]
 
@@ -42,17 +41,17 @@ if __name__ == "__main__":
                             temp = instancia.replace(".tsp", "")
                             str_nome_teste = f"{temp}-{operador_crz}-{num_threads}"
 
-                            str_execucao_linux = f"/usr/bin/time -p ./tsp instancias/{instancia} {operador_crz} {tam_pop} {chance_mut} {qtd_parada} {num_threads} 2> tempo.txt"
+                            str_execucao_linux = f"(time ./tsp instancias/{instancia} {operador_crz} {tam_pop} {chance_mut} {qtd_parada} {num_threads}) 2> tempo.txt"
                             print(f"Realizando teste com os seguintes parametros: {str_execucao_linux}")
                             
-                            if os.path.isfile(f"timestamps/{str_nome_teste}.txt"):
+                            if os.path.isfile(f"timestamps2/{str_nome_teste}.txt"):
                                 continue
 
                             os.system(str_execucao_linux)
                                         
-                            shutil.move('timestamp.txt', f'timestamps/{str_nome_teste}.txt')
-                            shutil.move('tempo_construcao.txt', f'timestamps/constr-{str_nome_teste}.txt')
-                            shutil.move('tempo.txt', f'timestamps/tempo-{str_nome_teste}.txt')
+                            shutil.move('timestamp.txt', f'timestamps2/{str_nome_teste}.txt')
+                            shutil.move('tempo_construcao.txt', f'timestamps2/constr-{str_nome_teste}.txt')
+                            shutil.move('tempo.txt', f'timestamps2/tempo-{str_nome_teste}.txt')
 
                             num_executado_de_testes += 1
                             print(f"Teste numero {num_executado_de_testes} de {num_total_testes} feito [{round((num_executado_de_testes*100)/num_total_testes, 2)}%]")
@@ -72,22 +71,22 @@ if __name__ == "__main__":
                         temp = instancia.replace(".tsp", "")
                         str_nome_teste = f"{temp}-{operador_crz}-sequencial"
 
-                        str_execucao_linux = f"/usr/bin/time -p ./tsp_sequencial instancias/{instancia} {operador_crz} {tam_pop} {chance_mut} {qtd_parada} 2> tempo.txt"
+                        str_execucao_linux = f"time ./tsp_sequencial instancias/{instancia} {operador_crz} {tam_pop} {chance_mut} {qtd_parada} 2> tempo.txt"
                         
                         # Alpha
                         if operador_crz == "1":
-                            str_execucao_linux = f"/usr/bin/time -p ./tsp_sequencial instancias/{instancia} {operador_crz} {tam_pop} {chance_mut} {qtd_parada} 0.01 2> tempo.txt"
+                            str_execucao_linux = f"(time ./tsp_sequencial instancias/{instancia} {operador_crz} {tam_pop} {chance_mut} {qtd_parada} 0.01) 2> tempo.txt"
                         
                         print(f"Realizando teste com os seguintes parametros: {str_execucao_linux}")
                         
-                        if os.path.isfile(f"timestamps/{str_nome_teste}.txt"):
+                        if os.path.isfile(f"timestamps2/{str_nome_teste}.txt"):
                             continue
 
                         os.system(str_execucao_linux)
                                     
-                        shutil.move('timestamp.txt', f'timestamps/{str_nome_teste}.txt')
-                        shutil.move('tempo_construcao.txt', f'timestamps/constr-{str_nome_teste}.txt')
-                        shutil.move('tempo.txt', f'timestamps/tempo-{str_nome_teste}.txt')
+                        shutil.move('timestamp.txt', f'timestamps2/{str_nome_teste}.txt')
+                        shutil.move('tempo_construcao.txt', f'timestamps2/constr-{str_nome_teste}.txt')
+                        shutil.move('tempo.txt', f'timestamps2/tempo-{str_nome_teste}.txt')
 
                         num_executado_de_testes += 1
                         print(f"Teste numero {num_executado_de_testes} de {num_total_testes} feito [{round((num_executado_de_testes*100)/num_total_testes, 2)}%]")

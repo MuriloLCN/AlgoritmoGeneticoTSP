@@ -1,7 +1,10 @@
 /*
-    Avaliação 2: Algoritmos heurísticos para o PCV
-    Murilo Luis Calvo Neves - RA 129037
-    Leandro Eugênio Farias Berton - RA 129268
+    TRABALHO PRÁTICO 1: Paralelização do Algoritmo Genético Aplicado ao Problema do Caixeiro Viajante
+    DISCIPLINA: Programação Concorrente
+    PROFESSOR: Ronaldo Augusto de Lara Gonçalves
+    ALUNOS: Murilo Luis Calvo Neves         - RA 129037
+            Leandro Eugênio Farias Berton   - RA 129268
+            Jõao Vitor Pereira de Bortoli   - RA 125910
 */
 
 #include<stdio.h>
