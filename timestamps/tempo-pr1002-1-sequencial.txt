@@ -1,0 +1,1 @@
+./tsp_sequencial instancias/pr1002.tsp 1 50 0.01 500 1  37.30s user 0.09s system 99% cpu 37.426 total

@@ -1,0 +1,1 @@
+./tsp_sequencial instancias/pla85900.tsp 1 50 0.01 500 1  3604.73s user 7.47s system 89% cpu 1:07:31.02 total
