@@ -1,0 +1,20 @@
+\begin{table}[h!]
+\centering
+\begin{tabular}{|c|c|c|c|c|c|}
+\hline
+\textbf{Instância} & \textbf{Threads} & \textbf{Tempo (s)} & \textbf{Iter.} & \textbf{$dN/dt$} & \textbf{Vezes Mais Rápido} \\ 
+\hline
+\multirow\{9}{*}{pla33810} & Sequencial & 3670.43 & 40 & 0.01089790569497307 * - \\ 
+& 1 & 3625.09 & 43 & 0.0119 & 1.09x \\ 
+& 2 & 1935.34 & 45 & 0.0233 & 2.13x \\ 
+& 3 & 1401.22 & 45 & 0.0321 & 2.95x \\ 
+& 4 & 1069.14 & 45 & 0.0421 & 3.86x \\ 
+& 5 & 887.5 & 47 & 0.053 & 4.86x \\ 
+& 6 & 800.72 & 47 & 0.0587 & 5.39x \\ 
+& 7 & 706.44 & 48 & 0.0679 & 6.23x \\ 
+& 8 & 657.23 & 49 & 0.0746 & 6.84x \\ 
+\hline
+\end{tabular}
+\caption{Comparativo de desempenho para a instancia pla33810.}
+\label{tab:tempos-pla33810}
+\end{table}

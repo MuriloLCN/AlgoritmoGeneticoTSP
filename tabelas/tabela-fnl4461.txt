@@ -1,0 +1,20 @@
+\begin{table}[h!]
+\centering
+\begin{tabular}{|c|c|c|c|c|c|}
+\hline
+\textbf{Instância} & \textbf{Threads} & \textbf{Tempo (s)} & \textbf{Iter.} & \textbf{$dN/dt$} & \textbf{Vezes Mais Rápido} \\ 
+\hline
+\multirow\{9}{*}{fnl4461} & Sequencial & 1883.57 & 660 & 0.35039844550507815 * - \\ 
+& 1 & 1354.78 & 713 & 0.5263 & 1.5x \\ 
+& 2 & 749.64 & 782 & 1.0432 & 2.98x \\ 
+& 3 & 628.07 & 584 & 0.9298 & 2.65x \\ 
+& 4 & 753.94 & 1108 & 1.4696 & 4.19x \\ 
+& 5 & 506.61 & 643 & 1.2692 & 3.62x \\ 
+& 6 & 547.57 & 578 & 1.0556 & 3.01x \\ 
+& 7 & 520.11 & 790 & 1.5189 & 4.33x \\ 
+& 8 & 442.34 & 626 & 1.4152 & 4.04x \\ 
+\hline
+\end{tabular}
+\caption{Comparativo de desempenho para a instancia fnl4461.}
+\label{tab:tempos-fnl4461}
+\end{table}

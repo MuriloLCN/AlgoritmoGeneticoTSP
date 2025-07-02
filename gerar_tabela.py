@@ -1,153 +1,142 @@
-# import os
-# import matplotlib.pyplot as plt
-
-# folder_path = "timestamps"
-# output_folder = "graficos"
-
-# melhores_solucoes = {
-#     "u574": 36905,
-#     "pcb1173": 56892,
-#     "pr1002": 259045,
-#     "brd14051": 469385,
-#     "fnl4461": 182566,
-#     "d15112": 157308,
-#     "pla33810": 66048945,
-#     "pla85900": 142382641,
-#     "kroA100": 21282,
-#     "a280": 2579
-# }
-
-# os.makedirs(output_folder, exist_ok=True)
-
-# with open(f"tabelas/resultados_todos.txt", "w+") as arquivo:
-#     arquivo.write("\\begin{longtable}{|c|c|c|c|c|c|c|c|}\n")
-#     arquivo.write("\\hline\n")
-#     arquivo.write(f"Instância & Alg. cruz. & Tam. pop. & Chance mut.\\% & Crit. par. & Resultado & MS & GAP\\% \\\\\n")
-#     arquivo.write("\\hline\n")
-
-#     for filename in os.listdir(folder_path):
-#         if filename.endswith(".txt"):
-#             arquivo_timestamp = os.path.join(folder_path, filename)
-            
-#             with open(arquivo_timestamp) as valores:
-#                 for line in valores:
-#                     pass
-#                 last_line = line
-
-#                 partes_arquivo = filename.split("-")
-
-#                 algoritmo_cruzamento = "ZX"
-#                 if partes_arquivo[0] == "1":
-#                     algoritmo_cruzamento = "EXX"
-
-#                 tamanho_pop = partes_arquivo[1]
-
-#                 chance_mutacao = partes_arquivo[2]
-#                 chance_mutacao = chance_mutacao[1:]
-#                 chance_mutacao = "0." + chance_mutacao
-#                 chance_mutacao = float(chance_mutacao)
-#                 chance_mutacao *= 100
-
-#                 cond_parada = partes_arquivo[3]
-
-#                 instancia = partes_arquivo[4].replace(".txt", "")
-
-#                 resultado_obtido = float(last_line.split()[2])
-
-#                 ms = melhores_solucoes[instancia]
-
-#                 gap = ((resultado_obtido - ms) / ms) * 100
-
-#                 chance_mutacao = f"{chance_mutacao:.2f}"
-#                 resultado_obtido = f"{resultado_obtido:.2f}"
-#                 gap = f"{gap:.2f}"
-
-#                 arquivo.write(f"{instancia} & {algoritmo_cruzamento} & {tamanho_pop} & {chance_mutacao} & {cond_parada} & {resultado_obtido} & {ms} & {gap} \\\\\n")
-
-#     arquivo.write("\\hline\n")
-#     arquivo.write("\\caption{Comparação entre as melhores soluções conhecidas da literatura e as obtidas pelo algoritmo com base nos parâmetros de execução}\n")
-#     arquivo.write("\\label{tab:my_label}\n")
-#     arquivo.write("\\end{longtable}\n")
+# \begin{table}[h!]
+#     \centering
+#     \begin{tabular}{|c|c|c|c|c|c|}
+#     \hline
+#     \textbf{Instância} & \textbf{Threads} & \textbf{Tempo (s)} & \textbf{Iter.} & \textbf{$dN/dt$} & \textbf{Vezes Mais Rápido} \\
+#     \hline
+#     \multirow{12}{*}{pla85900} & Sequencial & 4051.02 & 8 & 0.0019 & - \\
+#      & 1 & 3747.51 & 8 & 0.0021 & 1.10x \\
+#      & 2 & 2001.63 & 8 & 0.0039 & 2.05x \\
+#      & 3 & 1407.94 & 8 & 0.0056 & 2.94x \\
+#      & 4 & 1081.33 & 8 & 0.0074 & 3.89x \\
+#      & 5 & 912.45  & 7 & 0.0076 & 4.00x \\
+#      & 6 & 743.46  & 6 & 0.0080 & 4.21x \\
+#      & 7 & 635.78  & 5 & 0.0078 & 4.10x \\
+#      & 8 & 563.45  & 5 & 0.0088 & 4.63x \\
+#      & 9 & 611.36  & 6 & 0.0098 & 5.15x \\
+#      & 10 & 632.33 & 5 & 0.0079 & 4.15x \\
+#      & 11 & 592.60 & 5 & 0.0084 & 4.42x \\
+#     \hline
+#     \end{tabular}
+#     \caption{Comparativo de desempenho para a instância pla85900.}
+#     \label{tab:tempos-pla85900}
+# \end{table}
 
 import os
-import matplotlib.pyplot as plt
 
 folder_path = "timestamps"
-output_folder = "graficos"
+output_folder = "tabelas"
 
-melhores_solucoes = {
-    "u574": 36905,
-    "pcb1173": 56892,
-    "pr1002": 259045,
-    "brd14051": 469385,
-    "fnl4461": 182566,
-    "d15112": 157308,
-    "pla33810": 66048945,
-    "pla85900": 142382641,
-    "kroA100": 21282,
-    "a280": 2579
-}
+#instancias = ["pla33810", "d15112", "fnl4461", "pcb1173", "pr1002"]
+instancias = ["pr1002"]
 
+finais = ["sequencial", "1", "2", "3", "4", "5", "6", "7", "8"]
+
+def parse_time_from_string(time_str: str) -> float | None:
+    """
+    Converte uma string de tempo (como '9m23.449s', '1:07:31.02' ou '45.123s')
+    para um valor numérico em segundos.
+    """
+    # NOVO: Trata o formato XmY.YYYs (ex: 9m23.449s)
+    if 'm' in time_str:
+        try:
+            parts = time_str.lower().replace('s', '').split('m')
+            minutes = float(parts[0])
+            seconds = float(parts[1])
+            return minutes * 60 + seconds
+        except (ValueError, IndexError):
+            return None
+
+    # Mantém a lógica para formatos antigos por robustez
+    elif ':' in time_str:
+        try:
+            parts = time_str.split(':')
+            if len(parts) == 3:  # H:M:S
+                return int(parts[0]) * 3600 + int(parts[1]) * 60 + float(parts[2])
+            elif len(parts) == 2:  # M:S
+                return int(parts[0]) * 60 + float(parts[1])
+            else:
+                return None
+        except (ValueError, IndexError):
+            return None
+            
+    else:
+        try:
+            return float(time_str.rstrip('s'))
+        except ValueError:
+            return None
+        
 os.makedirs(output_folder, exist_ok=True)
 
-rows = []
+def ler_numero_iteracoes(arquivo: str) -> int:
+    # Retorna a lista iteracao, tempo
+    # lista_tempo = []
+    try:
+        lista_iteracao = []
 
-for filename in os.listdir(folder_path):
-    if filename.endswith(".txt"):
-        arquivo_timestamp = os.path.join(folder_path, filename)
+        with open(os.path.join(folder_path, arquivo), "r+") as arquivo:
+            for linha in arquivo:
+                partes = linha.split()
+                lista_iteracao.append(int(partes[0]))
+                # lista_tempo.append(float(partes[1]))
+
+        return lista_iteracao[-1]
+    except Exception as e:
+        print(f"Erro: {e}")
+        return -1
+    
+def ler_tempo_real(arquivo: str) -> float:
+    try:
+        with open(os.path.join(folder_path, arquivo), "r+") as arquivo:
+            for linha in arquivo:
+                partes = linha.split()
+                if partes[0] == "real":
+                    try:
+                        return float(partes[1])
+                    except Exception as e:
+                        return parse_time_from_string(partes[1])
+    except Exception as e:
+        print(f"Erro: {e}")
+        return -1
+    
+for instancia in instancias:
+    with open(f"{output_folder}/tabela-{instancia}.txt", "w+") as arquivo_saida:
+        tempos_execucao = []
+        numero_iteracoes = []
+
+        for final in finais:
+            numero_iteracoes.append(ler_numero_iteracoes(f"{instancia}-1-{final}.txt"))
+            tempos_execucao.append(ler_tempo_real(f"tempo-{instancia}-1-{final}.txt"))
+
+        print(instancia)
+        print(numero_iteracoes)
+        print(tempos_execucao)
+
+        velocidade_seq = numero_iteracoes[0] / tempos_execucao[0]
+
+        arquivo_saida.write("\\begin{table}[h!]\n")
+        arquivo_saida.write("\\centering\n")
+        arquivo_saida.write("\\begin{tabular}{|c|c|c|c|c|c|}\n")
+        arquivo_saida.write("\\hline\n")
+        arquivo_saida.write("\\textbf{Instância} & \\textbf{Threads} & \\textbf{Tempo (s)} & \\textbf{Iter.} & \\textbf{$dN/dt$} & \\textbf{Vezes Mais Rápido} \\\\ \n")
+        arquivo_saida.write("\\hline\n")
+        arquivo_saida.write("\\multirow{9}{*}{"+instancia+"} & Sequencial & " + str(tempos_execucao[0]) + " & " + str(numero_iteracoes[0]) + " & " + str(velocidade_seq) + " & - ")
+        arquivo_saida.write("\\\\ \n")        
         
-        with open(arquivo_timestamp) as valores:
-            for line in valores:
-                pass
-            last_line = line
+        for i, final in enumerate(finais):
+            if final == "sequencial":
+                continue
+            velocidade_i = numero_iteracoes[i] / tempos_execucao[i]
+            prop_i = velocidade_i / velocidade_seq
 
-            partes_arquivo = filename.split("-")
+            velocidade_i = str(round(velocidade_i,4))
+            prop_i = str(round(prop_i, 2))
+            arquivo_saida.write(f"& {i} & {tempos_execucao[i]} & {numero_iteracoes[i]} & {velocidade_i} & {prop_i}x ")
+            arquivo_saida.write("\\\\ \n")
 
-            algoritmo_cruzamento = "ZX"
-            if partes_arquivo[0] == "1":
-                algoritmo_cruzamento = "EXX"
-
-            tamanho_pop = partes_arquivo[1]
-
-            chance_mutacao = partes_arquivo[2]
-            chance_mutacao = chance_mutacao[1:]
-            chance_mutacao = "0." + chance_mutacao
-            chance_mutacao = float(chance_mutacao)
-            chance_mutacao *= 100
-
-            cond_parada = partes_arquivo[3]
-
-            instancia = partes_arquivo[4].replace(".txt", "")
-
-            resultado_obtido = float(last_line.split()[2])
-
-            ms = melhores_solucoes[instancia]
-
-            gap = ((resultado_obtido - ms) / ms) * 100
-
-            tempo_gasto = float(last_line.split()[1])
-
-            chance_mutacao = f"{chance_mutacao:.2f}"
-            resultado_obtido = f"{resultado_obtido:.2f}"
-            tempo_gasto = f"{tempo_gasto:.2f}"
-            gap = f"{gap:.2f}"
-
-            # Append a tuple with all necessary data for sorting
-            rows.append((float(gap), instancia, algoritmo_cruzamento, tamanho_pop, chance_mutacao, cond_parada, resultado_obtido, ms, gap, tempo_gasto))
-
-rows.sort(reverse=True, key=lambda x: x[0])
-
-with open(f"tabelas/resultados_todos.txt", "w+") as arquivo:
-    arquivo.write("\\begin{longtable}{|c|c|c|c|c|c|c|c|c|}\n")
-    arquivo.write("\\hline\n")
-    arquivo.write(f"Instância & Alg. cr. & N. Pop. & Mut.\\% & Crit. par. & Resultado & MS & GAP\\% & t(s)\\\\\n")
-    arquivo.write("\\hline\n")
-
-    for row in rows:
-        _, instancia, algoritmo_cruzamento, tamanho_pop, chance_mutacao, cond_parada, resultado_obtido, ms, gap, tempo_gasto = row
-        arquivo.write(f"{instancia} & {algoritmo_cruzamento} & {tamanho_pop} & {chance_mutacao} & {cond_parada} & {resultado_obtido} & {ms} & {gap} & {tempo_gasto}s\\\\\n")
-
-    arquivo.write("\\hline\n")
-    arquivo.write("\\caption{Comparação entre as melhores soluções conhecidas da literatura e as obtidas pelo algoritmo com base nos parâmetros de execução}\n")
-    arquivo.write("\\label{tab:my_label}\n")
-    arquivo.write("\\end{longtable}\n")
+        arquivo_saida.write("\\hline\n")
+        arquivo_saida.write("\\end{tabular}\n")
+        arquivo_saida.write("\\caption{Comparativo de desempenho para a instancia " + instancia + ".}\n")
+        arquivo_saida.write("\\label{tab:tempos-" + instancia + "}\n")
+        arquivo_saida.write("\\end{table}\n")
+        

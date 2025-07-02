@@ -1,0 +1,20 @@
+\begin{table}[h!]
+\centering
+\begin{tabular}{|c|c|c|c|c|c|}
+\hline
+\textbf{Instância} & \textbf{Threads} & \textbf{Tempo (s)} & \textbf{Iter.} & \textbf{$dN/dt$} & \textbf{Vezes Mais Rápido} \\ 
+\hline
+\multirow\{9}{*}{pcb1173} & Sequencial & 144.16 & 880 & 6.1043285238623755 * - \\ 
+& 1 & 58.13 & 567 & 9.754 & 1.6x \\ 
+& 2 & 32.71 & 1049 & 32.0697 & 5.25x \\ 
+& 3 & 59.15 & 1428 & 24.142 & 3.95x \\ 
+& 4 & 33.33 & 1209 & 36.2736 & 5.94x \\ 
+& 5 & 18.89 & 2102 & 111.2758 & 18.23x \\ 
+& 6 & 32.48 & 2863 & 88.1466 & 14.44x \\ 
+& 7 & 24.36 & 637 & 26.1494 & 4.28x \\ 
+& 8 & 16.57 & 2707 & 163.3675 & 26.76x \\ 
+\hline
+\end{tabular}
+\caption{Comparativo de desempenho para a instancia pcb1173.}
+\label{tab:tempos-pcb1173}
+\end{table}

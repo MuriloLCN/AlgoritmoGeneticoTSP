@@ -1,0 +1,20 @@
+\begin{table}[h!]
+\centering
+\begin{tabular}{|c|c|c|c|c|c|}
+\hline
+\textbf{Instância} & \textbf{Threads} & \textbf{Tempo (s)} & \textbf{Iter.} & \textbf{$dN/dt$} & \textbf{Vezes Mais Rápido} \\ 
+\hline
+\multirow{9}{*}{pr1002} & Sequencial & 37.426 & 1404 & 37.51402768129108 & - \\ 
+& 1 & 27.412 & 579 & 21.1221 & 0.56x \\ 
+& 2 & 19.482 & 1243 & 63.8025 & 1.7x \\ 
+& 3 & 21.735 & 796 & 36.623 & 0.98x \\ 
+& 4 & 9.688 & 1215 & 125.4129 & 3.34x \\ 
+& 5 & 26.132 & 540 & 20.6643 & 0.55x \\ 
+& 6 & 12.991 & 968 & 74.5131 & 1.99x \\ 
+& 7 & 28.451 & 825 & 28.9972 & 0.77x \\ 
+& 8 & 9.445 & 1542 & 163.261 & 4.35x \\ 
+\hline
+\end{tabular}
+\caption{Comparativo de desempenho para a instancia pr1002.}
+\label{tab:tempos-pr1002}
+\end{table}
