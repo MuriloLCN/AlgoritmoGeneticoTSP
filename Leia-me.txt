@@ -1,0 +1,58 @@
+    TRABALHO PRÁTICO 1: Paralelização do Algoritmo Genético Aplicado ao Problema do Caixeiro Viajante
+    DISCIPLINA: Programação Concorrente
+    PROFESSOR: Ronaldo Augusto de Lara Gonçalves
+    ALUNOS: Murilo Luis Calvo Neves         - RA 129037
+            Leandro Eugênio Farias Berton   - RA 129268
+            Jõao Vitor Pereira de Bortoli   - RA 125910
+
+Este projeto contém dois arquivos C que utilizam a biblioteca pthread para manipulação de threads e leitura de arquivos.
+
+## Arquivos
+
+- `main-final.c` – Código principal do programa
+- `leitura_arquivo.c` – Funções auxiliares para leitura de arquivos
+- `leitura_arquivo.h` – Cabeçalho com declarações usadas em `leitura_arquivo.c`
+- `Makefile` – Arquivo de automação para compilação
+
+## Como compilar
+
+Para compilar o projeto, execute: make
+
+Isso irá gerar o executável chamado `tsp`.
+
+## Como limpar os arquivos gerados
+
+Para remover o executável: make clean
+
+## Como recompilar tudo do zero
+make rebuild 
+
+
+## Alterando a flag da pthread
+
+Por padrão, o Makefile usa a flag `-pthread`. Se o seu sistema precisar de `-lpthread`, você pode passar a flag manualmente:
+make PTHREAD_FLAGS=-lpthread
+
+.
+.
+.
+
+Para compilar sem o makefile, os comandos são:
+
+- Sequencial: 'gcc main.c leitura_arquivo.c -o [exec] -lm'
+- Threaded: 'gcc -[l]pthread main.c leitura_arquivo.c -o [exec] -lm'
+
+As execução são, preferencialmente, feitas com o arquivo de testes disponível no github (cada branch possui o seu)
+
+Link para o repositório no GitHub: https://github.com/MuriloLCN/AlgoritmoGeneticoTSP
+
+## Execução
+A execução segue o seguinte formato:	./tsp {instancia} {operador_cruzamento} {tamanho_populacao} {taxa_mutacao} {criterio_parada} {threads}
+Dado que:
+        -- [operador_cruzamento]: Indica qual heuristica sera utilizada;
+           >> 0: Operador 1;
+	   >> 1: Operador 2;
+        -- [tamanho_populacao]: Um valor inteiro positivo para o tamanho da populacao (>= 0);
+        -- [chance_mutacao]: Um valor entre 0 e 1 que indica a chance de alguma mutacao ocorrer em um individuo;
+        -- [criterio_parada]: O numero de geracoes sem melhoria para parar o algoritmo;
+        -- [threads]: O numero de threads a serem utilizadas (opcional, padrão: 1);
