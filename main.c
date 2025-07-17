@@ -10,6 +10,7 @@
 #include<string.h>
 #include<time.h>
 #include<limits.h>
+#include<mpi.h>
 #include"leitura_arquivo.h"
 
 #define TAM_BUFFER_ENTRADA 1024
@@ -704,6 +705,103 @@ void copiarRota(int* fonte, int* destino)
     }
 }
 
+void enviaDadosIniciaisParaWorkers(int tamanho, int numeroDePaisSelecionadosParaCruzamento, int numeroDeProcessos)
+{
+    // Envia o tamanho
+    for (int i = 1; i < numeroDeProcessos; i++)
+    {
+        MPI_Send(&tamanhoPopulacao, 1, MPI_INT, i, 0, MPI_COMM_WORLD);
+    }
+
+    int numeroWorkers = numeroDeProcessos - 1;
+    int intervalo = tamanho / numeroWorkers;
+    int resto = tamanho - (intervalo * numeroWorkers);
+
+    int inicio = -1;
+    int fim = -1;
+
+    int ultimoElemento = -1;
+
+    // Envia intervalo geral
+    for (int i = 1; i < numeroDeProcessos; i++)
+    {
+        inicio = ultimoElemento + 1;
+        fim = inicio + intervalo;
+
+        if (resto)
+        {
+            fim += 1;
+            resto -= 1;
+        }
+
+        MPI_Send(&inicio, 1, MPI_INT, i, 0, MPI_COMM_WORLD);
+        MPI_Send(&fim, 1, MPI_INT, i, 0, MPI_COMM_WORLD);
+    }
+    
+    intervalo = tamanho / numeroWorkers;
+    resto = tamanho - (intervalo * numeroWorkers);
+
+    inicio = -1;
+    fim = -1;
+
+    ultimoElemento = -1;
+
+    for (int i = 1; i < numeroDeProcessos; i++)
+    {
+        inicio = ultimoElemento + 1;
+        fim = inicio + intervalo;
+
+        if (resto)
+        {
+            fim += 1;
+            resto -= 1;
+        }
+
+        MPI_Send(&inicio, 1, MPI_INT, i, 0, MPI_COMM_WORLD);
+        MPI_Send(&fim, 1, MPI_INT, i, 0, MPI_COMM_WORLD);
+    }
+
+    
+    int numeroDeProcessosUsados = numeroWorkers;
+
+    if ((numeroDePaisSelecionadosParaCruzamento / 2) < numeroWorkers)
+    {
+        numeroDeProcessosUsados = numeroDePaisSelecionadosParaCruzamento;
+    }
+
+    intervalo = ((numeroDePaisSelecionadosParaCruzamento / 2) / numeroDeProcessosUsados) - 1;
+    resto = (numeroDePaisSelecionadosParaCruzamento / 2)  % numeroDeProcessosUsados;
+
+    inicio = -1;
+    fim = -1;
+
+    ultimoElemento = -1;
+
+    for (int i = 1; i < numeroDeProcessos; i++)
+    {   
+        inicio = ultimoElemento + 1;
+        fim = inicio + intervalo;
+        if (resto)
+        {
+            fim++;
+            resto--;
+        }
+
+        if (inicio >= tamanho)
+        {
+            inicio = -1;
+            fim = -1;
+        }
+        else if (fim >= tamanho)
+        {
+            fim = tamanho - 1;
+        }
+        
+        MPI_Send(&inicio, 1, MPI_INT, i, 0, MPI_COMM_WORLD);
+        MPI_Send(&fim, 1, MPI_INT, i, 0, MPI_COMM_WORLD);
+    }
+}
+
 void calculaCustoMedioPopulacao(populacao* pop, float* media, float* custoPiorIndividuo, float* custoMelhorIndividuo)
 {
     *custoMelhorIndividuo = INFINITY;
@@ -727,7 +825,54 @@ void calculaCustoMedioPopulacao(populacao* pop, float* media, float* custoPiorIn
     *media = (soma / pop->tamanho);
 }
 
-int main(int argc, char *argv[]) {
+void worker(int id, MPI_Status st)
+{
+    // [Inicialização]
+
+    // Recebe o tamanho
+
+    // Recebe o intervalo de trabalho de cruzamento (inicio, fim)
+
+    // Recebe o intervalo de trabalho geral (inicio, fim)
+
+    // [Construção inicial]
+
+    // Executa construção inicial no intervalo
+
+    // Envia a quantidade de cromossomos criados (pra ela saber quanto usar de offset pro próx.)
+
+    // Envia os cromossomos criados para a master (cuidado com o resto do vetor q foi alocado mas ainda n usado)
+
+    // Envia as avaliações para a master
+
+    // [Laço infinito até a sinalização do final]
+
+    // Recebe um inteiro da master, se for 0, saia
+
+    // Recebe a população atual
+
+    // Recebe os pais selecionados para cruzamento
+
+    // Cruza os cromossomos
+
+    // Realiza a mutação da população
+
+    // Realiza o 2-opt da população
+
+    // Avalia os cromossomos
+
+    // Envia a quantidade de cromossomos trabalhados (fim - inicio do intervalo)
+
+    // Envia os cromossomos
+
+    // Envia as avaliações
+
+    // [Finalização]
+
+    // Libera o que foi alocado
+}
+
+int master(int argc, char *argv[], int numeroDeProcessos, MPI_Status st) {
     srand(time(NULL));
 
     // Parâmetros:
@@ -747,7 +892,7 @@ int main(int argc, char *argv[]) {
         [criterio_parada]: O número de gerações sem melhoria para parar o algoritmo 
     */  
     
-    if (argc > 7) {
+    if (argc > 7 || argc < 4) {
         printf("\nArgumentos incorretos, uso correto: \n[programa] arquivo_de_entrada.tsp [operador_cruzamento] [tamanho_populacao] [chance_mutacao] [criterio_parada]");
         printf("\n\nArgumentos:\n -- [programa]: O executavel compilado\n -- arquivo_de_entrada.tsp: O arquivo contendo a instancia a ser executada");
         printf("\n -- [operador_cruzamento]: Indica qual heuristica sera utilizada:");
@@ -844,7 +989,9 @@ int main(int argc, char *argv[]) {
     double tempoCorrido;
 
     inicioGeracaoPopulacaoInicial = clock();
-    // Populacao atual
+    
+    enviaDadosIniciaisParaWorkers(tamanhoPopulacao, numeroDePaisSelecionadosParaCruzamento, numeroDeProcessos);
+
     populacao* pop = gerarPopulacaoInicial(tamanhoPopulacao);
 
     fimGeracaoPopulacaoInicial = clock();
@@ -1026,6 +1173,28 @@ int main(int argc, char *argv[]) {
     fclose(arquivoEntrada);
     fclose(arquivoTimestamp);
     fclose(arquivoTempoConstrucao);
+
+    return 0;
+}
+
+int main(int argc, char *argv[])
+{
+    int id, numeroDeProcessos;
+    MPI_Status st;
+    MPI_Init(&argc,&argv);
+    MPI_Comm_rank(MPI_COMM_WORLD,&id);
+    MPI_Comm_size(MPI_COMM_WORLD,&numeroDeProcessos);
+
+    if (id == 0)
+    {
+        master(argc, argv, numeroDeProcessos, st);
+    }
+    else
+    {
+        worker(id, st);
+    }
+
+    MPI_Finalize();
 
     return 0;
 }
