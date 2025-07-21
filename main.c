@@ -707,10 +707,15 @@ void copiarRota(int* fonte, int* destino)
 
 void enviaDadosIniciaisParaWorkers(int tamanho, int numeroDePaisSelecionadosParaCruzamento, int numeroDeProcessos)
 {
+    printf("\nEnviando dados: Tam %d   NPCRZ %d", tamanho, numeroDePaisSelecionadosParaCruzamento);
+    fflush(stdout);
     // Envia o tamanho
     for (int i = 1; i < numeroDeProcessos; i++)
     {
-        MPI_Send(&tamanhoPopulacao, 1, MPI_INT, i, 0, MPI_COMM_WORLD);
+        MPI_Send(&tamanho, 1, MPI_INT, i, 0, MPI_COMM_WORLD);
+        
+        printf("\nEnviou o tamanho %d para o processo %d", tamanho, i);
+        fflush(stdout);
     }
 
     int numeroWorkers = numeroDeProcessos - 1;
@@ -721,6 +726,8 @@ void enviaDadosIniciaisParaWorkers(int tamanho, int numeroDePaisSelecionadosPara
     int fim = -1;
 
     int ultimoElemento = -1;
+
+    printf("\nProc: %d Workers: %d", numeroDeProcessos, numeroWorkers);
 
     // Envia intervalo geral
     for (int i = 1; i < numeroDeProcessos; i++)
@@ -734,6 +741,8 @@ void enviaDadosIniciaisParaWorkers(int tamanho, int numeroDePaisSelecionadosPara
             resto -= 1;
         }
 
+        ultimoElemento = fim - 1;
+
         MPI_Send(&inicio, 1, MPI_INT, i, 0, MPI_COMM_WORLD);
         MPI_Send(&fim, 1, MPI_INT, i, 0, MPI_COMM_WORLD);
     }
@@ -742,8 +751,11 @@ void enviaDadosIniciaisParaWorkers(int tamanho, int numeroDePaisSelecionadosPara
 
     if ((numeroDePaisSelecionadosParaCruzamento / 2) < numeroWorkers)
     {
-        numeroDeProcessosUsados = numeroDePaisSelecionadosParaCruzamento;
+        numeroDeProcessosUsados = numeroDePaisSelecionadosParaCruzamento / 2;
     }
+
+    printf("\nNumero de processos usados: %d", numeroDeProcessosUsados);
+    fflush(stdout);
 
     intervalo = ((numeroDePaisSelecionadosParaCruzamento / 2) / numeroDeProcessosUsados) - 1;
     resto = (numeroDePaisSelecionadosParaCruzamento / 2)  % numeroDeProcessosUsados;
@@ -753,28 +765,32 @@ void enviaDadosIniciaisParaWorkers(int tamanho, int numeroDePaisSelecionadosPara
 
     ultimoElemento = -1;
 
-    for (int i = 1; i < numeroDeProcessos; i++)
+    for (int i = 1; i < numeroDeProcessosUsados; i++)
     {   
         inicio = ultimoElemento + 1;
         fim = inicio + intervalo;
+
         if (resto)
         {
             fim++;
             resto--;
         }
-
-        if (inicio >= tamanho)
-        {
-            inicio = -1;
-            fim = -1;
-        }
-        else if (fim >= tamanho)
-        {
-            fim = tamanho - 1;
-        }
+        
+        ultimoElemento = fim - 1;
         
         MPI_Send(&inicio, 1, MPI_INT, i, 0, MPI_COMM_WORLD);
         MPI_Send(&fim, 1, MPI_INT, i, 0, MPI_COMM_WORLD);
+    }
+
+    if (numeroDeProcessosUsados != numeroWorkers)
+    {
+        inicio = -1;
+        fim = -1;
+        for (int i = numeroDeProcessosUsados + 1; i < numeroDeProcessos; i++)
+        {
+            MPI_Send(&inicio, 1, MPI_INT, i, 0, MPI_COMM_WORLD);
+            MPI_Send(&fim, 1, MPI_INT, i, 0, MPI_COMM_WORLD);   
+        }
     }
 }
 
@@ -801,45 +817,67 @@ void calculaCustoMedioPopulacao(populacao* pop, float* media, float* custoPiorIn
     *media = (soma / pop->tamanho);
 }
 
-void enviarPopulacao(populacao* pop, int fonte, int destino)
+void enviarPopulacao(populacao* pop, int destino, int inicio, int fim)
 {
+    // Enviar cromossomos[inicio] até cromossomos[fim-1]
+    for (int i = inicio; i < fim; i++)
+    {
+        MPI_Send((pop->cromossomo[i]), dimensao + 1, MPI_INT, destino, 0, MPI_COMM_WORLD);
+    }
 
+    // Enviar avaliacoes
+    MPI_Send(&(pop->avaliacao[inicio]), fim - inicio, MPI_FLOAT, destino, 0, MPI_COMM_WORLD);
 }
 
-void receberPopulacao(populacao* pop, int fonte) // pop é a população alocada p/ receber
+void receberPopulacao(populacao* pop, int fonte, int inicio, int fim, MPI_Status st) // pop é a população alocada p/ receber
 {
+    // Enviar cromossomos[inicio] até cromossomos[fim-1]
+    for (int i = inicio; i < fim; i++)
+    {
+        MPI_Recv((pop->cromossomo[i]), dimensao + 1, MPI_INT, fonte, 0, MPI_COMM_WORLD, &st);
+    }
 
+    // Enviar avaliacoes
+    MPI_Recv(&(pop->avaliacao[inicio]), fim - inicio, MPI_FLOAT, fonte, 0, MPI_COMM_WORLD, &st);
 }
 
 void worker(int id, MPI_Status st)
 {
-    srand(time(NULL));
+    srand(time(NULL) + id);
     // Recebe dados iniciais
     int tamanhoPopulacao;
 
     MPI_Recv(&tamanhoPopulacao, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, &st);
     
+    printf("\nId %d recebeu tamanho %d", id, tamanhoPopulacao);
+    fflush(stdout);
+
     int inicioGeral, fimGeral;
     int inicioCruzamento, fimCruzamento;
-
+    
     MPI_Recv(&inicioGeral, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, &st);
     MPI_Recv(&fimGeral, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, &st);
     
+    printf("\nId %d recebeu intervalo %d - %d", id, inicioGeral, fimGeral);
+    fflush(stdout);
+
     MPI_Recv(&inicioCruzamento, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, &st);
     MPI_Recv(&fimCruzamento, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, &st);
     
+    printf("\nId %d recebeu intervalo cruzamento %d - %d", id, inicioCruzamento, fimCruzamento);
+    fflush(stdout);
+
     int numElementosGerais = fimGeral - inicioGeral;
     int numElementosCruzamento = fimCruzamento - inicioCruzamento;
 
     // Alocando variáveis
     populacao* pop = gerarPopulacaoInicial(tamanhoPopulacao, inicioGeral, fimGeral);
 
-    // Envia a quantidade de cromossomos criados (pra master saber quanto usar de offset pro próx.)
-    MPI_Send(&numElementosGerais, 1, MPI_INT, 0, 0, MPI_COMM_WORLD);
+    // Envia o inicio e o fim para a master saber a posicao do vetor a receber
+    MPI_Send(&inicioGeral, 1, MPI_INT, 0, 0, MPI_COMM_WORLD);
+    MPI_Send(&fimGeral, 1, MPI_INT, 0, 0, MPI_COMM_WORLD);
 
-    // Envia os cromossomos criados para a master (cuidado com o resto do vetor q foi alocado mas ainda n usado)
-
-    // Envia as avaliações para a master
+    enviarPopulacao(pop, 0, inicioGeral, fimGeral);
 
     // [Laço infinito até a sinalização do final]
 
@@ -908,6 +946,7 @@ int master(int argc, char *argv[], int numeroDeProcessos, MPI_Status st) {
     if (tamanhoPopulacao <= 1)
     {
         printf("\nO sistema precisa de pelo menos dois indivíduos para funcionar");
+        fflush(stdout);
         return 1;
     }
 
@@ -928,6 +967,7 @@ int master(int argc, char *argv[], int numeroDeProcessos, MPI_Status st) {
     if (algoritmoCruzamento != 0 && algoritmoCruzamento != 1)
     {
         printf("\nErro: O operador de cruzamento deve ser 0 ou 1");
+        fflush(stdout);
         return 1;
     }
     
@@ -937,22 +977,26 @@ int master(int argc, char *argv[], int numeroDeProcessos, MPI_Status st) {
 
     if (arquivoTimestamp == NULL) {
         printf("\nErro ao criar arquivo timestamp.txt\n");
+        fflush(stdout);
         return 1;
     }
 
     if (arquivoEntrada == NULL) {
         printf("\nErro ao abrir arquivo de entrada");
+        fflush(stdout);
         return 1;
     }
 
     if (arquivoTempoConstrucao == NULL)
     {
         printf("\nErro ao criar o arquivo de log para o tempo de construcao");
+        fflush(stdout);
         return 1;
     }
 
     if (!terminaCom(argv[1], ".tsp")) {
         printf("\nArquivo de entrada deve ser do tipo .tsp");
+        fflush(stdout);
         return 1;
     }
 
@@ -972,6 +1016,7 @@ int master(int argc, char *argv[], int numeroDeProcessos, MPI_Status st) {
     int contadorGeracoesSemMelhoria = numeroGeracoesSemMelhoriaParaParar;
 
     printf("\nIniciando construcao inicial");
+    fflush(stdout);
 
     float custoMelhorRotaConhecida = INFINITY;
     int indiceMelhorRotaConhecida = -1;
@@ -991,12 +1036,24 @@ int master(int argc, char *argv[], int numeroDeProcessos, MPI_Status st) {
     // -1, -1 indica que apenas realiza a alocação, e não chama a função de VMP
     populacao* pop = gerarPopulacaoInicial(tamanhoPopulacao, -1, -1);
 
+    int inicio;
+    int fim;
+
+    for (int i = 1; i < numeroDeProcessos; i++)
+    {
+        MPI_Recv(&inicio, 1, MPI_INT, i, 0, MPI_COMM_WORLD, &st);
+        MPI_Recv(&fim, 1, MPI_INT, i, 0, MPI_COMM_WORLD, &st);
+        
+        receberPopulacao(pop, i, inicio, fim, st);
+    }
+
     fimGeracaoPopulacaoInicial = clock();
 
     tempoCorrido = (double)(fimGeracaoPopulacaoInicial - inicioGeracaoPopulacaoInicial) / CLOCKS_PER_SEC;
     printTempoConstrucao(tempoCorrido);
 
     printf("\nPopulacao inicial gerada");
+    fflush(stdout);
 
     // printarPopulacao(pop);
 
@@ -1184,10 +1241,14 @@ int main(int argc, char *argv[])
 
     if (id == 0)
     {
+        printf("\nId 0, entrou na funcao master");
+        fflush(stdout);
         master(argc, argv, numeroDeProcessos, st);
     }
     else
     {
+        printf("\nId positivo, entrou na funcao worker");
+        fflush(stdout);
         worker(id, st);
     }
 
