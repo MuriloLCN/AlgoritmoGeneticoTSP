@@ -51,7 +51,7 @@ int randMelhorado()
     return (int)(resultado % ((unsigned int)INT_MAX + 1));
 }
 
-populacao* gerarPopulacaoInicial(int tamanho)
+populacao* gerarPopulacaoInicial(int tamanho, int inicio, int fim)
 {
     if (tamanho > LIMITE_ALOCACAO)
     {
@@ -66,7 +66,7 @@ populacao* gerarPopulacaoInicial(int tamanho)
 
     float custo;
     // loop que inicializa cada cromossomo
-    for (int i = 0; i < tamanho; i++)
+    for (int i = inicio; i < fim; i++)
     {
         // nova_populacao->avaliacao[i] = 0.0;
         printf("\nGerando cromossomo %d de %d", i+1, tamanho);
@@ -737,31 +737,7 @@ void enviaDadosIniciaisParaWorkers(int tamanho, int numeroDePaisSelecionadosPara
         MPI_Send(&inicio, 1, MPI_INT, i, 0, MPI_COMM_WORLD);
         MPI_Send(&fim, 1, MPI_INT, i, 0, MPI_COMM_WORLD);
     }
-    
-    intervalo = tamanho / numeroWorkers;
-    resto = tamanho - (intervalo * numeroWorkers);
-
-    inicio = -1;
-    fim = -1;
-
-    ultimoElemento = -1;
-
-    for (int i = 1; i < numeroDeProcessos; i++)
-    {
-        inicio = ultimoElemento + 1;
-        fim = inicio + intervalo;
-
-        if (resto)
-        {
-            fim += 1;
-            resto -= 1;
-        }
-
-        MPI_Send(&inicio, 1, MPI_INT, i, 0, MPI_COMM_WORLD);
-        MPI_Send(&fim, 1, MPI_INT, i, 0, MPI_COMM_WORLD);
-    }
-
-    
+        
     int numeroDeProcessosUsados = numeroWorkers;
 
     if ((numeroDePaisSelecionadosParaCruzamento / 2) < numeroWorkers)
@@ -825,21 +801,41 @@ void calculaCustoMedioPopulacao(populacao* pop, float* media, float* custoPiorIn
     *media = (soma / pop->tamanho);
 }
 
+void enviarPopulacao(populacao* pop, int fonte, int destino)
+{
+
+}
+
+void receberPopulacao(populacao* pop, int fonte) // pop é a população alocada p/ receber
+{
+
+}
+
 void worker(int id, MPI_Status st)
 {
-    // [Inicialização]
+    srand(time(NULL));
+    // Recebe dados iniciais
+    int tamanhoPopulacao;
 
-    // Recebe o tamanho
+    MPI_Recv(&tamanhoPopulacao, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, &st);
+    
+    int inicioGeral, fimGeral;
+    int inicioCruzamento, fimCruzamento;
 
-    // Recebe o intervalo de trabalho de cruzamento (inicio, fim)
+    MPI_Recv(&inicioGeral, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, &st);
+    MPI_Recv(&fimGeral, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, &st);
+    
+    MPI_Recv(&inicioCruzamento, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, &st);
+    MPI_Recv(&fimCruzamento, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, &st);
+    
+    int numElementosGerais = fimGeral - inicioGeral;
+    int numElementosCruzamento = fimCruzamento - inicioCruzamento;
 
-    // Recebe o intervalo de trabalho geral (inicio, fim)
+    // Alocando variáveis
+    populacao* pop = gerarPopulacaoInicial(tamanhoPopulacao, inicioGeral, fimGeral);
 
-    // [Construção inicial]
-
-    // Executa construção inicial no intervalo
-
-    // Envia a quantidade de cromossomos criados (pra ela saber quanto usar de offset pro próx.)
+    // Envia a quantidade de cromossomos criados (pra master saber quanto usar de offset pro próx.)
+    MPI_Send(&numElementosGerais, 1, MPI_INT, 0, 0, MPI_COMM_WORLD);
 
     // Envia os cromossomos criados para a master (cuidado com o resto do vetor q foi alocado mas ainda n usado)
 
@@ -992,7 +988,8 @@ int master(int argc, char *argv[], int numeroDeProcessos, MPI_Status st) {
     
     enviaDadosIniciaisParaWorkers(tamanhoPopulacao, numeroDePaisSelecionadosParaCruzamento, numeroDeProcessos);
 
-    populacao* pop = gerarPopulacaoInicial(tamanhoPopulacao);
+    // -1, -1 indica que apenas realiza a alocação, e não chama a função de VMP
+    populacao* pop = gerarPopulacaoInicial(tamanhoPopulacao, -1, -1);
 
     fimGeracaoPopulacaoInicial = clock();
 
