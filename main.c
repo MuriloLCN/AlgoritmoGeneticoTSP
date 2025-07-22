@@ -51,29 +51,43 @@ int randMelhorado()
     return (int)(resultado % ((unsigned int)INT_MAX + 1));
 }
 
-populacao* gerarPopulacaoInicial(int tamanho, int inicio, int fim)
+populacao* gerarPopulacaoInicial(int tamanhoPop, booleano calcularVMP)
 {
-    if (tamanho > LIMITE_ALOCACAO)
+    if (tamanhoPop > LIMITE_ALOCACAO)
     {
         printf("Limite de alocação atingido!");
         return NULL;
     }
     
     populacao* nova_populacao = malloc(sizeof(populacao));
-    nova_populacao->tamanho = tamanho;
-    nova_populacao->avaliacao = malloc(sizeof(float) * tamanho);
-    nova_populacao->cromossomo = malloc(sizeof(int*) * tamanho);
+    nova_populacao->tamanho = tamanhoPop;
+    nova_populacao->avaliacao = malloc(sizeof(float) * tamanhoPop);
+    nova_populacao->cromossomo = malloc(sizeof(int*) * tamanhoPop);
+
+    printf("\nAlocou populacao");
+    fflush(stdout);
 
     float custo;
     // loop que inicializa cada cromossomo
-    for (int i = inicio; i < fim; i++)
+    for (int i = 0; i < tamanhoPop; i++)
     {
         // nova_populacao->avaliacao[i] = 0.0;
-        printf("\nGerando cromossomo %d de %d", i+1, tamanho);
         nova_populacao->cromossomo[i] = malloc(sizeof(int) * (dimensao + 1));
-        vizinhoMaisProximo(nova_populacao->cromossomo[i], &custo);
-        nova_populacao->avaliacao[i] = custo;
+        if (calcularVMP == True)
+        {
+            printf("\nGerando cromossomo %d de %d", i+1, tamanhoPop);
+            fflush(stdout);
+            vizinhoMaisProximo(nova_populacao->cromossomo[i], &custo);
+            nova_populacao->avaliacao[i] = custo;
+        }
+        else
+        {
+            nova_populacao->avaliacao[i] = 0.0;
+        }
     }
+
+    printf("\nTerminou laco");
+    fflush(stdout);
     
     return nova_populacao;
 }
@@ -713,8 +727,10 @@ void enviaDadosIniciaisParaWorkers(int tamanho, int numeroDePaisSelecionadosPara
     for (int i = 1; i < numeroDeProcessos; i++)
     {
         MPI_Send(&tamanho, 1, MPI_INT, i, 0, MPI_COMM_WORLD);
+        MPI_Send(&dimensao, 1, MPI_INT, i, 0, MPI_COMM_WORLD);
+        MPI_Send(&listaDeVertices, dimensao * sizeof(coordenada), MPI_BYTE, i, 0, MPI_COMM_WORLD);
         
-        printf("\nEnviou o tamanho %d para o processo %d", tamanho, i);
+        printf("\nEnviou o tamanho %d e a dimensao %d para o processo %d", tamanho, dimensao, i);
         fflush(stdout);
     }
 
@@ -743,8 +759,8 @@ void enviaDadosIniciaisParaWorkers(int tamanho, int numeroDePaisSelecionadosPara
 
         ultimoElemento = fim - 1;
 
-        MPI_Send(&inicio, 1, MPI_INT, i, 0, MPI_COMM_WORLD);
-        MPI_Send(&fim, 1, MPI_INT, i, 0, MPI_COMM_WORLD);
+        MPI_Send(&inicio, 1, MPI_INT, i, 1, MPI_COMM_WORLD);
+        MPI_Send(&fim, 1, MPI_INT, i, 2, MPI_COMM_WORLD);
     }
         
     int numeroDeProcessosUsados = numeroWorkers;
@@ -757,7 +773,7 @@ void enviaDadosIniciaisParaWorkers(int tamanho, int numeroDePaisSelecionadosPara
     printf("\nNumero de processos usados: %d", numeroDeProcessosUsados);
     fflush(stdout);
 
-    intervalo = ((numeroDePaisSelecionadosParaCruzamento / 2) / numeroDeProcessosUsados) - 1;
+    intervalo = ((numeroDePaisSelecionadosParaCruzamento / 2) / numeroDeProcessosUsados);
     resto = (numeroDePaisSelecionadosParaCruzamento / 2)  % numeroDeProcessosUsados;
 
     inicio = -1;
@@ -765,7 +781,7 @@ void enviaDadosIniciaisParaWorkers(int tamanho, int numeroDePaisSelecionadosPara
 
     ultimoElemento = -1;
 
-    for (int i = 1; i < numeroDeProcessosUsados; i++)
+    for (int i = 0; i < numeroDeProcessosUsados; i++)
     {   
         inicio = ultimoElemento + 1;
         fim = inicio + intervalo;
@@ -778,8 +794,8 @@ void enviaDadosIniciaisParaWorkers(int tamanho, int numeroDePaisSelecionadosPara
         
         ultimoElemento = fim - 1;
         
-        MPI_Send(&inicio, 1, MPI_INT, i, 0, MPI_COMM_WORLD);
-        MPI_Send(&fim, 1, MPI_INT, i, 0, MPI_COMM_WORLD);
+        MPI_Send(&inicio, 1, MPI_INT, i+1, 3, MPI_COMM_WORLD);
+        MPI_Send(&fim, 1, MPI_INT, i+1, 4, MPI_COMM_WORLD);
     }
 
     if (numeroDeProcessosUsados != numeroWorkers)
@@ -788,8 +804,8 @@ void enviaDadosIniciaisParaWorkers(int tamanho, int numeroDePaisSelecionadosPara
         fim = -1;
         for (int i = numeroDeProcessosUsados + 1; i < numeroDeProcessos; i++)
         {
-            MPI_Send(&inicio, 1, MPI_INT, i, 0, MPI_COMM_WORLD);
-            MPI_Send(&fim, 1, MPI_INT, i, 0, MPI_COMM_WORLD);   
+            MPI_Send(&inicio, 1, MPI_INT, i, 3, MPI_COMM_WORLD);
+            MPI_Send(&fim, 1, MPI_INT, i, 4, MPI_COMM_WORLD);   
         }
     }
 }
@@ -819,25 +835,21 @@ void calculaCustoMedioPopulacao(populacao* pop, float* media, float* custoPiorIn
 
 void enviarPopulacao(populacao* pop, int destino, int inicio, int fim)
 {
-    // Enviar cromossomos[inicio] até cromossomos[fim-1]
-    for (int i = inicio; i < fim; i++)
+    for (int i = 0; i < (fim - inicio); i++)
     {
-        MPI_Send((pop->cromossomo[i]), dimensao + 1, MPI_INT, destino, 0, MPI_COMM_WORLD);
+        MPI_Send(pop->cromossomo[i], dimensao + 1, MPI_INT, destino, 0, MPI_COMM_WORLD);
     }
 
-    // Enviar avaliacoes
-    MPI_Send(&(pop->avaliacao[inicio]), fim - inicio, MPI_FLOAT, destino, 0, MPI_COMM_WORLD);
+    MPI_Send(pop->avaliacao, fim - inicio, MPI_FLOAT, destino, 0, MPI_COMM_WORLD);
 }
 
-void receberPopulacao(populacao* pop, int fonte, int inicio, int fim, MPI_Status st) // pop é a população alocada p/ receber
+void receberPopulacao(populacao* pop, int fonte, int inicio, int fim, MPI_Status st)
 {
-    // Enviar cromossomos[inicio] até cromossomos[fim-1]
     for (int i = inicio; i < fim; i++)
     {
-        MPI_Recv((pop->cromossomo[i]), dimensao + 1, MPI_INT, fonte, 0, MPI_COMM_WORLD, &st);
+        MPI_Recv(pop->cromossomo[i], dimensao + 1, MPI_INT, fonte, 0, MPI_COMM_WORLD, &st);
     }
 
-    // Enviar avaliacoes
     MPI_Recv(&(pop->avaliacao[inicio]), fim - inicio, MPI_FLOAT, fonte, 0, MPI_COMM_WORLD, &st);
 }
 
@@ -848,6 +860,12 @@ void worker(int id, MPI_Status st)
     int tamanhoPopulacao;
 
     MPI_Recv(&tamanhoPopulacao, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, &st);
+    MPI_Recv(&dimensao, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, &st);
+
+    listaDeVertices = malloc(dimensao * sizeof(coordenada));
+
+    MPI_Recv(listaDeVertices, dimensao * sizeof(coordenada), MPI_BYTE, 0, 0, MPI_COMM_WORLD, &st);
+
     
     printf("\nId %d recebeu tamanho %d", id, tamanhoPopulacao);
     fflush(stdout);
@@ -855,14 +873,14 @@ void worker(int id, MPI_Status st)
     int inicioGeral, fimGeral;
     int inicioCruzamento, fimCruzamento;
     
-    MPI_Recv(&inicioGeral, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, &st);
-    MPI_Recv(&fimGeral, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, &st);
+    MPI_Recv(&inicioGeral, 1, MPI_INT, 0, 1, MPI_COMM_WORLD, &st);
+    MPI_Recv(&fimGeral, 1, MPI_INT, 0, 2, MPI_COMM_WORLD, &st);
     
     printf("\nId %d recebeu intervalo %d - %d", id, inicioGeral, fimGeral);
     fflush(stdout);
 
-    MPI_Recv(&inicioCruzamento, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, &st);
-    MPI_Recv(&fimCruzamento, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, &st);
+    MPI_Recv(&inicioCruzamento, 1, MPI_INT, 0, 3, MPI_COMM_WORLD, &st);
+    MPI_Recv(&fimCruzamento, 1, MPI_INT, 0, 4, MPI_COMM_WORLD, &st);
     
     printf("\nId %d recebeu intervalo cruzamento %d - %d", id, inicioCruzamento, fimCruzamento);
     fflush(stdout);
@@ -870,8 +888,14 @@ void worker(int id, MPI_Status st)
     int numElementosGerais = fimGeral - inicioGeral;
     int numElementosCruzamento = fimCruzamento - inicioCruzamento;
 
+    printf("\n%d - Gerando populacao (%d)", id, numElementosGerais);
+    fflush(stdout);
+
     // Alocando variáveis
-    populacao* pop = gerarPopulacaoInicial(tamanhoPopulacao, inicioGeral, fimGeral);
+    populacao* pop = gerarPopulacaoInicial(numElementosGerais, True);
+
+    printf("\n%d - Enviando populacao de volta", id);
+    fflush(stdout);
 
     // Envia o inicio e o fim para a master saber a posicao do vetor a receber
     MPI_Send(&inicioGeral, 1, MPI_INT, 0, 0, MPI_COMM_WORLD);
@@ -1034,7 +1058,7 @@ int master(int argc, char *argv[], int numeroDeProcessos, MPI_Status st) {
     enviaDadosIniciaisParaWorkers(tamanhoPopulacao, numeroDePaisSelecionadosParaCruzamento, numeroDeProcessos);
 
     // -1, -1 indica que apenas realiza a alocação, e não chama a função de VMP
-    populacao* pop = gerarPopulacaoInicial(tamanhoPopulacao, -1, -1);
+    populacao* pop = gerarPopulacaoInicial(tamanhoPopulacao, False);
 
     int inicio;
     int fim;
