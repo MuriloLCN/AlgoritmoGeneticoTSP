@@ -902,6 +902,8 @@ void worker(int id, MPI_Status st)
 
     enviarPopulacao(pop, 0, 0, numElementosGerais);
 
+    free(pop);
+    pop = gerarPopulacaoInicial(tamanhoPopulacao, False);
     int sinalParada = 1;
     while (1)
     {
@@ -910,11 +912,9 @@ void worker(int id, MPI_Status st)
         {
             break;
         }
+
+        receberPopulacao(pop, 0, 0, tamanhoPopulacao, st);
     }
-    // [Laço infinito até a sinalização do final]
-
-    // Recebe um inteiro da master, se for 0, saia
-
     // Recebe a população atual
 
     // Recebe os pais selecionados para cruzamento
@@ -1146,6 +1146,10 @@ int master(int argc, char *argv[], int numeroDeProcessos, MPI_Status st) {
 
         selecionarCromossomos(pop, paisSelecionados);
 
+        for (int i = 1; i < numeroDeProcessos; i++)
+        {
+            enviarPopulacao(pop, i, 0, tamanhoPopulacao);  
+        }
         // printf("\nSelecionou cromossomos");
 
         cruzarCromossomos(pop, paisSelecionados, novosIndividuos);
