@@ -835,12 +835,12 @@ void calculaCustoMedioPopulacao(populacao* pop, float* media, float* custoPiorIn
 
 void enviarPopulacao(populacao* pop, int destino, int inicio, int fim)
 {
-    for (int i = 0; i < (fim - inicio); i++)
+    for (int i = inicio; i < fim; i++)
     {
         MPI_Send(pop->cromossomo[i], dimensao + 1, MPI_INT, destino, 0, MPI_COMM_WORLD);
     }
 
-    MPI_Send(pop->avaliacao, fim - inicio, MPI_FLOAT, destino, 0, MPI_COMM_WORLD);
+    MPI_Send(&(pop->avaliacao[inicio]), fim - inicio, MPI_FLOAT, destino, 0, MPI_COMM_WORLD);
 }
 
 void receberPopulacao(populacao* pop, int fonte, int inicio, int fim, MPI_Status st)
@@ -900,7 +900,7 @@ void worker(int id, MPI_Status st)
     MPI_Send(&inicioGeral, 1, MPI_INT, 0, 0, MPI_COMM_WORLD);
     MPI_Send(&fimGeral, 1, MPI_INT, 0, 0, MPI_COMM_WORLD);
 
-    enviarPopulacao(pop, 0, inicioGeral, fimGeral);
+    enviarPopulacao(pop, 0, 0, numElementosGerais);
 
     // [Laço infinito até a sinalização do final]
 
