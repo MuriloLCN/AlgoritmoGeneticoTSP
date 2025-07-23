@@ -902,6 +902,15 @@ void worker(int id, MPI_Status st)
 
     enviarPopulacao(pop, 0, 0, numElementosGerais);
 
+    int sinalParada = 1;
+    while (1)
+    {
+        MPI_Recv(&sinalParada, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, &st);
+        if (sinalParada == 0)
+        {
+            break;
+        }
+    }
     // [Laço infinito até a sinalização do final]
 
     // Recebe um inteiro da master, se for 0, saia
@@ -1127,8 +1136,14 @@ int master(int argc, char *argv[], int numeroDeProcessos, MPI_Status st) {
 
     avaliarCromossomos(pop);
 
+    int parada = 1;
     while (atingiuCriterioParada == False)
     {
+        for (int i = 1; i < numeroDeProcessos; i++)
+        {
+            MPI_Send(&parada, 1, MPI_INT, i, 0, MPI_COMM_WORLD);
+        }
+
         selecionarCromossomos(pop, paisSelecionados);
 
         // printf("\nSelecionou cromossomos");
@@ -1229,6 +1244,13 @@ int master(int argc, char *argv[], int numeroDeProcessos, MPI_Status st) {
 
     end = clock();
     double cpu_time_used = ((double)(end - start)) / CLOCKS_PER_SEC;
+
+    parada = 0;
+
+    for (int i = 1; i < numeroDeProcessos; i++)
+    {
+        MPI_Send(&parada, 1, MPI_INT, i, 0, MPI_COMM_WORLD);
+    }
 
     printf("\nFinalizado! Tempo gasto: %lf", cpu_time_used);
     printf("\nRota calculada: %f\n", custoMelhorRotaConhecida);
