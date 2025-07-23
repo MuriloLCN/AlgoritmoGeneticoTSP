@@ -728,7 +728,7 @@ void enviaDadosIniciaisParaWorkers(int tamanho, int numeroDePaisSelecionadosPara
     {
         MPI_Send(&tamanho, 1, MPI_INT, i, 0, MPI_COMM_WORLD);
         MPI_Send(&dimensao, 1, MPI_INT, i, 0, MPI_COMM_WORLD);
-        MPI_Send(&listaDeVertices, dimensao * sizeof(coordenada), MPI_BYTE, i, 0, MPI_COMM_WORLD);
+        MPI_Send(listaDeVertices, dimensao * sizeof(coordenada), MPI_BYTE, i, 0, MPI_COMM_WORLD);
         
         printf("\nEnviou o tamanho %d e a dimensao %d para o processo %d", tamanho, dimensao, i);
         fflush(stdout);
@@ -865,7 +865,6 @@ void worker(int id, MPI_Status st)
     listaDeVertices = malloc(dimensao * sizeof(coordenada));
 
     MPI_Recv(listaDeVertices, dimensao * sizeof(coordenada), MPI_BYTE, 0, 0, MPI_COMM_WORLD, &st);
-
     
     printf("\nId %d recebeu tamanho %d", id, tamanhoPopulacao);
     fflush(stdout);
