@@ -108,9 +108,9 @@ void ordenaPopulacao(populacao *pop) {
     }
 }
 
-void avaliarCromossomos (populacao* populacao_atual)
+void avaliarCromossomos (populacao* populacao_atual, int inicio, int fim)
 {
-    for (int i = 0; i < populacao_atual->tamanho; i++)
+    for (int i = inicio; i < fim; i++)
     {
         populacao_atual->avaliacao[i] = calculaCustoRota(populacao_atual->cromossomo[i]);
     }
@@ -515,14 +515,26 @@ booleano presente(int* ciclo, int tamanho, int vertice) {
 
 void exx_crossover(int* pai1, int* pai2, int* filho) {
     // EXX (Edge Exchange Crossover)
+    // printf("\n[EXX] Entrou na funcao");
+    fflush(stdout);
+        
     int tamanho = dimensao + 1;
+
+    // printf("\n[EXX] tamanho: %d, inicializando filhos com -1",tamanho);
+    // fflush(stdout);
 
     for (int i = 0; i < tamanho; i++) {
         filho[i] = -1;
     }
 
+    // printf("\n[EXX] Filhos inicializados com -1");
+    // fflush(stdout);
+
     int pontoInicio = randMelhorado() % dimensao;
     int pontoFim = randMelhorado() % dimensao;
+
+    // printf("\n[EXX] Rand melhorado: [%d a %d]", pontoInicio, pontoFim);
+    // fflush(stdout);
 
     while (pontoInicio == pontoFim)
     {
@@ -536,9 +548,16 @@ void exx_crossover(int* pai1, int* pai2, int* filho) {
         pontoInicio = temp;
     }
 
+    // printf("\n[EXX] Copiando parte do pai 1");
+    // fflush(stdout);
+    
     for (int i = pontoInicio; i <= pontoFim; i++) {
         filho[i] = pai1[i];
     }
+
+    // printf("\n[EXX] Partes do pai 1 copiadas, copiando do pai 2");
+    // fflush(stdout);
+    
 
     int posicao = 0;
     for (int i = 0; i < tamanho - 1; i++) {
@@ -550,7 +569,14 @@ void exx_crossover(int* pai1, int* pai2, int* filho) {
         }
     }
 
+    // printf("\n[EXX] Partes do pai 2 copiadas, fechando ciclo");
+    // fflush(stdout);
+    
     filho[tamanho - 1] = filho[0];
+
+    // printf("\n[EXX] Saindo do exx");
+    // fflush(stdout);
+    
 }
 
 void mutarCromossomo(populacao* pop, int i)
@@ -647,16 +673,20 @@ void selecionarCromossomos(populacao* pop, int* paisSelecionados) {
     // }
 }
 
-void cruzarCromossomos(populacao* pop, int* paisSelecionados, populacao* filhosGerados)
+void cruzarCromossomos(populacao* pop, int* paisSelecionados, populacao* filhosGerados, int inicio, int fim)
 {
     /*
         Cruza os pais selecionados da população para gerar numeroDePaisSelecionadosParaCruzamento/2 filhos.
     */
     
-    for (int i = 0; i < numeroDePaisSelecionadosParaCruzamento / 2; i++)
+    for (int i = inicio; i < fim; i++)
     {
+        // printf("\n[Cruzamento] i = %d, 2i = %i, 2i + 1 = %d, tamanho da populacao: %d",i, 2*i, 2*i + 1, pop->tamanho);
+        // fflush(stdout);
+        
         int indicePai1 = paisSelecionados[2 * i];
         int indicePai2 = paisSelecionados[(2 * i) + 1];
+
 
 
         if (algoritmoCruzamento == 0)
@@ -723,13 +753,14 @@ void enviaDadosIniciaisParaWorkers(int tamanho, int numeroDePaisSelecionadosPara
 {
     printf("\nEnviando dados: Tam %d   NPCRZ %d", tamanho, numeroDePaisSelecionadosParaCruzamento);
     fflush(stdout);
-    // Envia o tamanho
+    // Envia o tamanho e o número de pais selecionados para cruzamento
     for (int i = 1; i < numeroDeProcessos; i++)
     {
         MPI_Send(&tamanho, 1, MPI_INT, i, 0, MPI_COMM_WORLD);
         MPI_Send(&dimensao, 1, MPI_INT, i, 0, MPI_COMM_WORLD);
         MPI_Send(listaDeVertices, dimensao * sizeof(coordenada), MPI_BYTE, i, 0, MPI_COMM_WORLD);
-        
+        MPI_Send(&numeroDePaisSelecionadosParaCruzamento, 1, MPI_INT, i, 0, MPI_COMM_WORLD);
+        MPI_Send(&algoritmoCruzamento, 1, MPI_INT, i, 0, MPI_COMM_WORLD);
         printf("\nEnviou o tamanho %d e a dimensao %d para o processo %d", tamanho, dimensao, i);
         fflush(stdout);
     }
@@ -857,7 +888,7 @@ void worker(int id, MPI_Status st)
 {
     srand(time(NULL) + id);
     // Recebe dados iniciais
-    int tamanhoPopulacao;
+    int tamanhoPopulacao, numeroDePaisSelecionadosParaCruzamento;
 
     MPI_Recv(&tamanhoPopulacao, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, &st);
     MPI_Recv(&dimensao, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, &st);
@@ -865,6 +896,8 @@ void worker(int id, MPI_Status st)
     listaDeVertices = malloc(dimensao * sizeof(coordenada));
 
     MPI_Recv(listaDeVertices, dimensao * sizeof(coordenada), MPI_BYTE, 0, 0, MPI_COMM_WORLD, &st);
+    MPI_Recv(&numeroDePaisSelecionadosParaCruzamento, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, &st);
+    MPI_Recv(&algoritmoCruzamento, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, &st);
     
     printf("\nId %d recebeu tamanho %d", id, tamanhoPopulacao);
     fflush(stdout);
@@ -887,11 +920,24 @@ void worker(int id, MPI_Status st)
     int numElementosGerais = fimGeral - inicioGeral;
     int numElementosCruzamento = fimCruzamento - inicioCruzamento;
 
+    int* paisSelecionados = malloc(sizeof(int) * numeroDePaisSelecionadosParaCruzamento);
+
     printf("\n%d - Gerando populacao (%d)", id, numElementosGerais);
     fflush(stdout);
 
     // Alocando variáveis
     populacao* pop = gerarPopulacaoInicial(numElementosGerais, True);
+    populacao* novosIndividuos = malloc(sizeof(populacao));
+    novosIndividuos->tamanho = numeroDePaisSelecionadosParaCruzamento / 2;
+    novosIndividuos->avaliacao = malloc(sizeof(float) * novosIndividuos->tamanho);
+    novosIndividuos->cromossomo = malloc(sizeof(int*) * novosIndividuos->tamanho);
+
+    for (int i = 0; i < novosIndividuos->tamanho; i++)
+    {
+        novosIndividuos->avaliacao[i] = 0.0;
+        novosIndividuos->cromossomo[i] = malloc(sizeof(int) * (dimensao + 1));
+    }
+
 
     printf("\n%d - Enviando populacao de volta", id);
     fflush(stdout);
@@ -912,30 +958,59 @@ void worker(int id, MPI_Status st)
         {
             break;
         }
-
+        // printf("\n[%d] Recebeu bit 1, continuando no laco", id);
+        fflush(stdout);
+        
+        // Recebe a população atual
         receberPopulacao(pop, 0, 0, tamanhoPopulacao, st);
+
+        // printf("\n[%d] Recebeu a populacao atual", id);
+        fflush(stdout);
+        
+        // Recebe os pais selecionados para cruzamento
+        MPI_Recv(paisSelecionados, numeroDePaisSelecionadosParaCruzamento, MPI_INT, 0, 0, MPI_COMM_WORLD, &st);
+
+        // printf("\n[%d] Recebeu os pais selecionados para cruzamento", id);
+        // printf("\nPais: ");
+        // for (int i = 0; i < numeroDePaisSelecionadosParaCruzamento; i++)
+        // {
+        //     printf("%d ", paisSelecionados[i]);
+        // }
+        
+        // printf("\n[%d] Indo fazer o cruzamento com (p, ps, ni, %d, %d)", id, inicioCruzamento, fimCruzamento);
+        // fflush(stdout);
+    
+        cruzarCromossomos(pop, paisSelecionados, novosIndividuos, inicioCruzamento, fimCruzamento);
+
+        // printf("\n[%d] Cruzou cromossomos (p, ps, ni, %d, %d", id, inicioCruzamento, fimCruzamento);
+        // fflush(stdout);
+
+        for (int i = inicioGeral; i < fimGeral; i++)
+        {
+            mutarCromossomo(pop, i);
+            doisOpt(pop, i);
+        }
+        
+        // printf("\n[%d] Mutou e fez 2-opt com os cromossomos", id);
+        // fflush(stdout);
+        
+        avaliarCromossomos(novosIndividuos, inicioCruzamento, fimCruzamento);
+
+        // printf("\n[%d] Avaliou os cromossomos", id);
+        // fflush(stdout);
+        
+        // Envia a parte da população trabalhada
+        MPI_Send(&inicioGeral, 1, MPI_INT, 0, 5, MPI_COMM_WORLD);
+        MPI_Send(&fimGeral, 1, MPI_INT, 0, 5, MPI_COMM_WORLD);
+
+        enviarPopulacao(pop, 0, 0, numElementosGerais);
+
+        // Envia os indivíduos novos
+        MPI_Send(&inicioCruzamento, 1, MPI_INT, 0, 6, MPI_COMM_WORLD);
+        MPI_Send(&fimCruzamento, 1, MPI_INT, 0, 6, MPI_COMM_WORLD);
+
+        enviarPopulacao(novosIndividuos, 0, 0, numElementosCruzamento);
     }
-    // Recebe a população atual
-
-    // Recebe os pais selecionados para cruzamento
-
-    // Cruza os cromossomos
-
-    // Realiza a mutação da população
-
-    // Realiza o 2-opt da população
-
-    // Avalia os cromossomos
-
-    // Envia a quantidade de cromossomos trabalhados (fim - inicio do intervalo)
-
-    // Envia os cromossomos
-
-    // Envia as avaliações
-
-    // [Finalização]
-
-    // Libera o que foi alocado
 }
 
 int master(int argc, char *argv[], int numeroDeProcessos, MPI_Status st) {
@@ -1122,6 +1197,7 @@ int master(int argc, char *argv[], int numeroDeProcessos, MPI_Status st) {
     printf("\nMelhor rota conhecida: %f, indice: %d", custoMelhorRotaConhecida, indiceMelhorRotaConhecida);
 
     printf("\nMemoria alocada!");
+    fflush(stdout);
 
     inicioMelhoramento = clock();
     // printTimestamp(custoMelhorRotaConhecida);
@@ -1131,47 +1207,93 @@ int master(int argc, char *argv[], int numeroDeProcessos, MPI_Status st) {
     printTimestampIteracao(custoMelhorRotaConhecida, 0, custoMedio, custoPiorIndividuo, custoMelhorIndividuo);
 
     printf("\nEntrando no laco");
+    fflush(stdout);
     
     int numeroDeGeracoes = 1;
 
-    avaliarCromossomos(pop);
+    avaliarCromossomos(pop, 0, tamanhoPopulacao);
+
+    printf("\nAvaliou cromossomos");
+    fflush(stdout);
 
     int parada = 1;
     while (atingiuCriterioParada == False)
     {
+        // printf("\nEnviando bit de continuacao para os workers");
+        // fflush(stdout);
+
         for (int i = 1; i < numeroDeProcessos; i++)
         {
             MPI_Send(&parada, 1, MPI_INT, i, 0, MPI_COMM_WORLD);
         }
 
+        // printf("\nBit enviado, selecionando cromossomos...");
+        // fflush(stdout);
+
         selecionarCromossomos(pop, paisSelecionados);
+
+        // printf("\nCromossomos selecionados, enviando populacao...");
+        // fflush(stdout);
 
         for (int i = 1; i < numeroDeProcessos; i++)
         {
             enviarPopulacao(pop, i, 0, tamanhoPopulacao);  
         }
-        // printf("\nSelecionou cromossomos");
 
-        cruzarCromossomos(pop, paisSelecionados, novosIndividuos);
+        // printf("\nPopulacao enviada, enviando pais selecionados...");
+        // fflush(stdout);
+        
+        for (int i = 1; i < numeroDeProcessos; i++)
+        {
+            MPI_Send(paisSelecionados, numeroDePaisSelecionadosParaCruzamento, MPI_INT, i, 0, MPI_COMM_WORLD);
+        }
+
+        // printf("\nPais selecionados, esperando workers fazerem sua magica...");
+        // fflush(stdout);
+        
+
+        // cruzarCromossomos(pop, paisSelecionados, novosIndividuos);
 
         // printf("\nCruzou cromossomos");
 
-        for (int i = 0; i < pop->tamanho; i++)
-        {
-            // printf("\nIteracao com o cromossomo %d", i);
+        // for (int i = 0; i < pop->tamanho; i++)
+        // {
+        //     // printf("\nIteracao com o cromossomo %d", i);
 
-            // printf("\nMutando...");
+        //     // printf("\nMutando...");
 
-            mutarCromossomo(pop, i);
+        //     mutarCromossomo(pop, i);
             
-            // printf("\nAplicando doisOpt...");
+        //     // printf("\nAplicando doisOpt...");
 
-            doisOpt(pop, i);
-        }
+        //     doisOpt(pop, i);
+        // }
 
         // printf("\nMutou e fez 2opt com os cromossomos");
-        avaliarCromossomos(novosIndividuos);
+        // avaliarCromossomos(novosIndividuos);
         
+        for (int i = 1; i < numeroDeProcessos; i++)
+        {
+            MPI_Recv(&inicio, 1, MPI_INT, i, 5, MPI_COMM_WORLD, &st);
+            MPI_Recv(&fim, 1, MPI_INT, i, 5, MPI_COMM_WORLD, &st);
+            
+            receberPopulacao(pop, i, inicio, fim, st);
+        }
+
+        // printf("\nRecebeu populacao dos workers");
+        // fflush(stdout);
+
+        for (int i = 1; i < numeroDeProcessos; i++)
+        {
+            MPI_Recv(&inicio, 1, MPI_INT, i, 6, MPI_COMM_WORLD, &st);
+            MPI_Recv(&fim, 1, MPI_INT, i, 6, MPI_COMM_WORLD, &st);
+            
+            receberPopulacao(novosIndividuos, i, inicio, fim, st);
+        }
+
+        // printf("\nRecebeu novos individuos, fazendo acoes na master...");
+        // fflush(stdout);
+
         ordenaPopulacao(pop);
         ordenaPopulacao(novosIndividuos);
 
@@ -1192,7 +1314,7 @@ int master(int argc, char *argv[], int numeroDeProcessos, MPI_Status st) {
 
         // printf("\nPopulacao atualizada");
 
-        avaliarCromossomos(pop);
+        avaliarCromossomos(pop, 0, tamanhoPopulacao);
 
         // printf("\nAvaliou cromossomos");
 
@@ -1220,7 +1342,7 @@ int master(int argc, char *argv[], int numeroDeProcessos, MPI_Status st) {
             //     printf("%d ", melhorRotaConhecida[j]);
             // }
             printf("\n[Iteracao %d] melhor custo obtido: %.2f | custo medio: %.2f | contador: %d", numeroDeGeracoes, custoMelhorRotaConhecida, custoMedio, contadorGeracoesSemMelhoria);
-            
+            fflush(stdout);
         }
         else
         {
