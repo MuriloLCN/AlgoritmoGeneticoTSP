@@ -959,13 +959,13 @@ void worker(int id, MPI_Status st)
             break;
         }
         // printf("\n[%d] Recebeu bit 1, continuando no laco", id);
-        fflush(stdout);
+        // fflush(stdout);
         
         // Recebe a população atual
         receberPopulacao(pop, 0, 0, tamanhoPopulacao, st);
 
         // printf("\n[%d] Recebeu a populacao atual", id);
-        fflush(stdout);
+        // fflush(stdout);
         
         // Recebe os pais selecionados para cruzamento
         MPI_Recv(paisSelecionados, numeroDePaisSelecionadosParaCruzamento, MPI_INT, 0, 0, MPI_COMM_WORLD, &st);
@@ -1003,13 +1003,13 @@ void worker(int id, MPI_Status st)
         MPI_Send(&inicioGeral, 1, MPI_INT, 0, 5, MPI_COMM_WORLD);
         MPI_Send(&fimGeral, 1, MPI_INT, 0, 5, MPI_COMM_WORLD);
 
-        enviarPopulacao(pop, 0, 0, numElementosGerais);
+        enviarPopulacao(pop, 0, inicioGeral, fimGeral);
 
         // Envia os indivíduos novos
         MPI_Send(&inicioCruzamento, 1, MPI_INT, 0, 6, MPI_COMM_WORLD);
         MPI_Send(&fimCruzamento, 1, MPI_INT, 0, 6, MPI_COMM_WORLD);
 
-        enviarPopulacao(novosIndividuos, 0, 0, numElementosCruzamento);
+        enviarPopulacao(novosIndividuos, 0, inicioCruzamento, fimCruzamento);
     }
 }
 
@@ -1310,6 +1310,7 @@ int master(int argc, char *argv[], int numeroDeProcessos, MPI_Status st) {
         // }
 
         // printf("\nAtualizando populacao");
+        // fflush(stdout);
         atualizarPopulacao(pop, novosIndividuos);
 
         // printf("\nPopulacao atualizada");
