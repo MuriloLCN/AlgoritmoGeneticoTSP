@@ -32,14 +32,19 @@ coordenada* listaDeVertices;
 int dimensao;
 int limiteExecucaoHoras = 1;
 int algoritmoCruzamento;
-clock_t inicioMelhoramento;
-clock_t inicioExecucao;
+struct timespec inicioMelhoramento;
+struct timespec inicioExecucao;
+struct timespec temp;
 float alpha;
 
 void vizinhoMaisProximo(int* rotaFinal, float* custo);
 float calculaCustoRota(int* rota);
 float calculaDistancia(coordenada* c1, coordenada* c2);
 void copiarRota(int* fonte, int* destino);
+
+double time_diff(struct timespec start, struct timespec end) {
+    return (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9;
+}
 
 int randMelhorado()
 {
@@ -331,12 +336,14 @@ void printTempoConstrucao(float tempo)
 
 void printTimestamp(float custo)
 {
-    fprintf(arquivoTimestamp, "%f %f \n", ((float) (clock() - inicioMelhoramento)) / CLOCKS_PER_SEC, custo);
+    clock_gettime(CLOCK_REALTIME, &temp);
+    fprintf(arquivoTimestamp, "%f %f \n", (float) time_diff(inicioMelhoramento, temp), custo);
 }
 
 void printTimestampIteracao(float custo, int iter, float custoMedio, float custoPiorPop, float custoMelhorPop)
 {
-    fprintf(arquivoTimestamp, "%d %f %f %f %f %f\n", iter, ((float) (clock() - inicioMelhoramento)) / CLOCKS_PER_SEC, custo, custoMedio, custoPiorPop, custoMelhorPop);
+    clock_gettime(CLOCK_REALTIME, &temp);
+    fprintf(arquivoTimestamp, "%d %f %f %f %f %f\n", iter, (float) time_diff(inicioMelhoramento, temp), custo, custoMedio, custoPiorPop, custoMelhorPop);
 }
 
 float calculaDistancia(coordenada* c1, coordenada* c2)
@@ -1016,6 +1023,8 @@ void worker(int id, MPI_Status st)
 int master(int argc, char *argv[], int numeroDeProcessos, MPI_Status st) {
     srand(time(NULL));
 
+    struct timespec tempoInicio, tempoFim;
+
     // Parâmetros:
 
     /*
@@ -1114,9 +1123,7 @@ int master(int argc, char *argv[], int numeroDeProcessos, MPI_Status st) {
 
     lerArquivo(arquivoEntrada, &listaDeVertices, &dimensao);
 
-    clock_t start, end;
-    inicioExecucao = clock();
-    start = clock();
+    clock_gettime(CLOCK_REALTIME, &inicioExecucao);
 
     booleano atingiuCriterioParada = False;
 
@@ -1133,10 +1140,10 @@ int master(int argc, char *argv[], int numeroDeProcessos, MPI_Status st) {
     float custoPiorIndividuo;
     float custoMelhorIndividuo; // difere da melhorRotaConhecida pq esse deve obrigatoriamente ser da população atual
 
-    clock_t inicioGeracaoPopulacaoInicial, fimGeracaoPopulacaoInicial;
+    struct timespec inicioGeracaoPopulacaoInicial, fimGeracaoPopulacaoInicial;
     double tempoCorrido;
 
-    inicioGeracaoPopulacaoInicial = clock();
+    clock_gettime(CLOCK_REALTIME, &inicioGeracaoPopulacaoInicial);
     
     enviaDadosIniciaisParaWorkers(tamanhoPopulacao, numeroDePaisSelecionadosParaCruzamento, numeroDeProcessos);
 
@@ -1154,9 +1161,10 @@ int master(int argc, char *argv[], int numeroDeProcessos, MPI_Status st) {
         receberPopulacao(pop, i, inicio, fim, st);
     }
 
-    fimGeracaoPopulacaoInicial = clock();
+    clock_gettime(CLOCK_REALTIME, &fimGeracaoPopulacaoInicial);
 
-    tempoCorrido = (double)(fimGeracaoPopulacaoInicial - inicioGeracaoPopulacaoInicial) / CLOCKS_PER_SEC;
+    tempoCorrido = time_diff(inicioGeracaoPopulacaoInicial, fimGeracaoPopulacaoInicial);
+
     printTempoConstrucao(tempoCorrido);
 
     printf("\nPopulacao inicial gerada");
@@ -1199,7 +1207,8 @@ int master(int argc, char *argv[], int numeroDeProcessos, MPI_Status st) {
     printf("\nMemoria alocada!");
     fflush(stdout);
 
-    inicioMelhoramento = clock();
+    clock_gettime(CLOCK_REALTIME, &inicioMelhoramento);
+    clock_gettime(CLOCK_REALTIME, &tempoInicio);
     // printTimestamp(custoMelhorRotaConhecida);
 
     calculaCustoMedioPopulacao(pop, &custoMedio, &custoPiorIndividuo, &custoMelhorIndividuo);
@@ -1356,8 +1365,10 @@ int master(int argc, char *argv[], int numeroDeProcessos, MPI_Status st) {
         {
             atingiuCriterioParada = True;
         }
-
-        if (((double)(clock() - inicioExecucao)/CLOCKS_PER_SEC) / 3600 > limiteExecucaoHoras)
+        
+        clock_gettime(CLOCK_REALTIME, &temp);
+        if (time_diff(inicioExecucao, temp) / 3600 > limiteExecucaoHoras)
+        // if (((double)(clock() - inicioExecucao)/CLOCKS_PER_SEC) / 3600 > limiteExecucaoHoras)
         {
             atingiuCriterioParada = True;
         }
@@ -1369,8 +1380,8 @@ int master(int argc, char *argv[], int numeroDeProcessos, MPI_Status st) {
 
     }
 
-    end = clock();
-    double cpu_time_used = ((double)(end - start)) / CLOCKS_PER_SEC;
+    clock_gettime(CLOCK_REALTIME, &tempoFim);
+    double cpu_time_used = time_diff(tempoInicio, tempoFim);
 
     parada = 0;
 
