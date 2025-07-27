@@ -14,10 +14,10 @@ numero_processos = ["2", "3", "4", "5", "6", "7", "8"]
 
 # Aumentar p/ instâncias dps que estiver funcionando
 arquivos_de_teste = [
-					 "pr1002.tsp"
-                     #"u574.tsp",
-                     #"kroA100.tsp"
-                     #"a280.tsp"
+					 "pr1002.tsp",
+                     "u574.tsp",
+                     "kroA100.tsp",
+                     "a280.tsp",
 ]
 
 def ler_timestamp(arquivo: str) -> tuple[list[int],list[float]]:
@@ -192,6 +192,6 @@ if __name__ == "__main__":
                         num_executado_de_testes += 1
                         print(f"Teste numero {num_executado_de_testes} de {num_total_testes} feito [{round((num_executado_de_testes*100)/num_total_testes, 2)}%]")
 
-    for intancia in arquivos_de_teste:
+    for instancia in arquivos_de_teste:
         grafico(instancia)
         tabela(instancia)
